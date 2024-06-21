@@ -8,12 +8,50 @@ import torch
 from torch.utils.data import DataLoader
 import einops
 
+from sae_lens import SAE
+
 from datasets import load_dataset
 
 from transformer_lens import HookedTransformer
 from transformer_lens.utilities import devices
 from transformer_lens.past_key_value_caching import HookedTransformerKeyValueCache
 import transformer_lens.utils as tutils
+
+
+@torch.no_grad()
+def text_to_sae_feats(
+        model: HookedTransformer,
+        sae: SAE,
+        hook_point: str,
+        text: str,
+    ):
+    """
+    Converts text to SAE features.
+
+    Returns:
+        torch.Tensor: SAE activations. Shape: [batch_size, sequence_len, d_sae]
+    """
+
+    _, acts = model.run_with_cache(text, names_filter=hook_point)
+    acts = acts[hook_point]
+
+    all_sae_acts = []
+    for batch in acts:
+        sae_acts = sae(batch).feature_acts
+        all_sae_acts.append(sae_acts)
+    
+    return torch.stack(all_sae_acts, dim=0)
+
+
+@torch.no_grad()
+def top_activations(activations: torch.Tensor, top_k: int=10):
+    """
+    Returns the top_k activations for each position in the sequence.
+    """
+    top_v, top_i = torch.topk(activations, top_k, dim=-1)
+
+    return top_v, top_i
+
 
 
 @torch.no_grad()

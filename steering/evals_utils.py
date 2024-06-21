@@ -3,7 +3,10 @@ import json
 from openai import OpenAI, AsyncOpenAI
 from dotenv import load_dotenv
 import asyncio
-import aiohttp
+import nest_asyncio
+
+# allows running asyncio in jupyter. 
+nest_asyncio.apply()
 
 # you need to have a .env file with OPENAI_API_KEY='<your_openai_api_key>'
 load_dotenv()
@@ -44,7 +47,8 @@ def evaluate_completions(
         ]
         return await asyncio.gather(*tasks)
 
-    return asyncio.run(evaluate_all())
+    res = asyncio.run(evaluate_all())
+    return res
         
 
 # Example usage
