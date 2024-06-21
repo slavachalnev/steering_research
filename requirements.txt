@@ -1,3 +1,5 @@
 sae_lens
 openai
 nest_asyncio
+jupyter
+ipykernel

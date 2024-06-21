@@ -174,6 +174,8 @@ def scores_2d(
     criterions: list[str],
     scales: list[float],
     n_samples=10,
+    batch_size=4,
+    model_name="gpt-3.5-turbo", # "gpt-4o"
     max_new_tokens=30,
     top_k=50,
     top_p=0.3,
@@ -205,30 +207,22 @@ def scores_2d(
             print(f'evaluating ({i}, {j})')
             steering_vector = vector_grid[i, j]
             hooks = [(hook_point, partial(patch_resid, steering=steering_vector, scale=1))]
-            # gen_texts = generate(
-            #     model,
-            #     hook_point,
-            #     prompt=prompt,
-            #     steering_vector=steering_vector[None, None, :],
-            #     scale=1,
-            #     n_samples=n_samples,
-            #     insertion_pos=insertion_pos,
-            #     top_k=top_k,
-            # )
+
             gen_texts = generate(
                 model,
                 hooks=hooks,
                 prompt=prompt,
                 n_samples=n_samples,
                 max_new_tokens=max_new_tokens,
+                batch_size=batch_size,
                 top_k=top_k,
                 top_p=top_p,
             )
 
             print(gen_texts)
-            eval_1 = evaluate_completions(gen_texts, criterion=criterions[0], prompt=prompt, verbose=False)
-            eval_2 = evaluate_completions(gen_texts, criterion=criterions[1], prompt=prompt, verbose=False)
-            coherence = evaluate_completions(gen_texts, criterion=coherence_criterion, prompt=prompt, verbose=False)
+            eval_1 = evaluate_completions(gen_texts, criterion=criterions[0], prompt=prompt, verbose=False, model=model_name)
+            eval_2 = evaluate_completions(gen_texts, criterion=criterions[1], prompt=prompt, verbose=False, model=model_name)
+            coherence = evaluate_completions(gen_texts, criterion=coherence_criterion, prompt=prompt, verbose=False, model=model_name)
             scores_1 = [e['score'] for e in eval_1]
             scores_2 = [e['score'] for e in eval_2]
             coherence_scores = [e['score'] for e in coherence]
