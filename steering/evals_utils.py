@@ -78,20 +78,24 @@ def multi_criterion_evaluation(
         return await asyncio.gather(*tasks)
     
     results = asyncio.run(evaluate_all())
-    
+
     # Reshape results into a 2D list: [completion][criterion]
-    reshaped_results = [results[i:i+len(criterions)] for i in range(0, len(results), len(criterions))]
+    reshaped_results = []
+    for i in range(len(criterions)):
+        reshaped_results.append(results[i*len(completions):(i+1)*len(completions)])
     
     # Filter out error responses
     filtered_results = []
-    for completion_results in reshaped_results:
-        if not any("error" in result for result in completion_results):
-            filtered_results.append(completion_results)
-    
-    # Transpose the filtered_results to group by criterion
-    transposed_results = list(map(list, zip(*filtered_results)))
-    
-    return transposed_results
+    for criterion_results in reshaped_results:
+        valid_criterion_results = []
+        for result in criterion_results:
+            if "error" not in result:
+                valid_criterion_results.append(result)
+        filtered_results.append(valid_criterion_results)
+
+    return filtered_results
+
+
 
 # Example usage
 if __name__ == "__main__":
