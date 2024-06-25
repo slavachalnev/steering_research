@@ -35,7 +35,7 @@ The language model was given a prompt and generated the following text. \
         return json.loads(content)
     except json.JSONDecodeError as e:
         print(f"JSON decode error: {e}")
-        print(f"Text causing the error:\n{content}")
+        print(f"Text causing the error:\n{system_message}\n{prompt}\n{completion}")
         return {"score": 0, "error": "Failed to parse JSON response"}
     except Exception as e:
         print(f"Error in evaluate_completion: {e}")
