@@ -78,6 +78,7 @@ def generate(
                 verbose=False,
                 top_k=top_k,
                 top_p=top_p,
+                stop_at_eos=True,
             )
             batch_results = batch_results[:, 1:] # cut bos
             str_results = model.to_string(batch_results)
