@@ -23,7 +23,7 @@ headers = {
     "Content-Type": "application/json"
 }
 data = {
-    "version": "81f1819b16d8ec24b0365d72fe6563365acca245123d7d37d327d1f94313165a",
+    "version": "806d4b25f02fbffee8076a34423ecdf8e261774c75adde941e17ed3a49457712",
     "input": {
         "prompt": "The best city",
         "steering": "[[10138, 40]]",
