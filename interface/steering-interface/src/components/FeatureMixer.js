@@ -1,12 +1,17 @@
 import React, { useState, useRef, useEffect } from "react";
+import { steeringData } from "../utils/api";
 
-const FeatureMixer = () => {
-	const [features, setFeatures] = useState([
-		{ id: 1, value: 0, color: "orange" },
-		{ id: 2, value: 60, color: "purple" },
-		{ id: 3, value: 30, color: "blue" },
-	]);
+// Function to determine if a color is light or dark
+const getTextColor = (bgColor) => {
+	const color = bgColor.charAt(0) === "#" ? bgColor.substring(1, 7) : bgColor;
+	const r = parseInt(color.substring(0, 2), 16);
+	const g = parseInt(color.substring(2, 4), 16);
+	const b = parseInt(color.substring(4, 6), 16);
+	const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+	return luminance > 186 ? "#000000" : "#FFFFFF";
+};
 
+const FeatureMixer = ({ features, setFeatures }) => {
 	const containerRef = useRef(null);
 	const [containerWidth, setContainerWidth] = useState(0);
 
@@ -33,7 +38,7 @@ const FeatureMixer = () => {
 		if (featureDiv) {
 			// Hide the mouse cursor and give the feature div a temporary border
 			document.body.style.cursor = "none";
-			featureDiv.style.border = "1px dashed red";
+			featureDiv.style.border = "1px dashed grey";
 			featureDiv.style.marginTop = "-2px";
 			featureDiv.style.marginLeft = "-2px";
 		}
@@ -64,8 +69,8 @@ const FeatureMixer = () => {
 				// Restore the mouse cursor and remove the temporary border
 				document.body.style.cursor = "";
 				featureDiv.style.border = "";
-				featureDiv.style.marginTop = "0px";
-				featureDiv.style.marginLeft = "0px";
+				featureDiv.style.marginTop = "";
+				featureDiv.style.marginLeft = "";
 			}
 		};
 
@@ -110,8 +115,11 @@ const FeatureMixer = () => {
 								style={{
 									width: `${(feature.value / 100) * containerWidth}px`,
 									backgroundColor: feature.color,
+									color: getTextColor(feature.color),
 								}}
-							></div>
+							>
+								{steeringData[feature.id]}
+							</div>
 						</div>
 					</div>
 				))}

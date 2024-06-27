@@ -8,22 +8,22 @@ const ControlPanel = ({ setJobs, setResults }) => {
 	const [input, setInput] = useState("I think");
 	const [newFeature, setNewFeature] = useState(null);
 	const [features, setFeatures] = useState([
-		[10138, "0"],
-		[2378, "0"],
-		[11067, "0"],
+		{ id: 10138, value: 0, color: "orange" },
+		{ id: 2378, value: 0, color: "purple" },
+		{ id: 11067, value: 0, color: "blue" },
 	]);
 
 	const addNewFeature = async () => {
 		const data = await getNeuronpedia(newFeature);
-		setFeatures([...features, [newFeature, 40]]);
+		setFeatures([...features, { id: newFeature, value: 40, color: "red" }]);
 		setNewFeature("");
 	};
 
 	const handleSubmit = async () => {
 		const steering = JSON.stringify(
 			features
-				.filter((feature) => feature[1] > 0)
-				.map((feature) => [feature[0], parseInt(feature[1])])
+				.filter((feature) => feature.value > 0)
+				.map((feature) => [feature.id, parseInt(feature.value)])
 		);
 
 		const data = {
@@ -75,29 +75,7 @@ const ControlPanel = ({ setJobs, setResults }) => {
 					Features:
 				</div>
 			)}
-			<FeatureMixer />
-
-			{features.map((feature, i) => {
-				return (
-					<div key={i}>
-						<div>
-							{steeringData[feature[0]] ? steeringData[feature[0]] : feature[0]}
-						</div>
-						<input
-							className="feature-scale"
-							type="range"
-							min="0"
-							max="100"
-							value={feature[1]}
-							onChange={(ev) => {
-								let newScales = [...features];
-								newScales[i][1] = ev.target.value;
-								setFeatures(newScales);
-							}}
-						/>
-					</div>
-				);
-			})}
+			<FeatureMixer features={features} setFeatures={setFeatures} />
 
 			<button onClick={handleSubmit}>Submit</button>
 
