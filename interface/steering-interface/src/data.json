@@ -1,0 +1,92 @@
+[
+	{
+		"texts": [
+			"I think how you will always look for is a special type of moments such as creating moments that you will cherish forever. Well when it comes to my wedding and I’ll will truly do something which is off the box and memorable moments rather then a boring wedding",
+			"I think you deserve one for what you did and what you still can do!\n\nWhen you can't be present for the ceremony and get pictures with all her friends, that's really rough. It's like not being present but getting the photos",
+			"I think I've said it before, but there is a certain magic in the air when we play the A Song of Ice and Fire books, and that is very much the case when playing A Game of Thrones: The Board",
+			"I think it is too little and not enough… I have a problem with these new Sears One Step Makeovers.  The products are good but they are very repetitive.  The only thing that makes it worth doing is to get the "
+		],
+		"metadata": {
+			"prompt": "I think",
+			"steering": "[[2378, 77]]",
+			"n_samples": 4,
+			"batch_size": 1,
+			"max_new_tokens": 50
+		}
+	},
+	{
+		"texts": [
+			"I really enjoy walking around this city because there is always something in sight to see. Today I caught the tube underground and in search of an exciting exhibition I walked to and across. Now the London is a great city in, so what to do do today?\n\nI have lived in London",
+			"I really enjoy walking around this city because it is always busy and noisy. At least it used to be until the pandemic. Now the London streets are much quieter as less tourists and locals venture out and about. Since the lockdown, there has been something of a vacuum and I am used to",
+			"I really enjoy walking around this city because in every corner life is shown off in all its glory. As long as you leave the streets to the tourists, you will see the city’s true essence, the soul of people that make this city their home.\n\nThe city has two main",
+			"I really enjoy walking around this city because there are so many places to find free entertainment. It is also really nice because you never know who you are going to see.\n\nI went to see the San Francisco Giants play the Los Angeles Dodgers on the 50th anniversary of Jackie Robinson"
+		],
+		"metadata": {
+			"prompt": "I really enjoy walking around this city because",
+			"steering": "[[10138, 77]]",
+			"n_samples": 4,
+			"batch_size": 1,
+			"max_new_tokens": 50
+		}
+	},
+	{
+		"texts": [
+			"I really enjoy walking around this city because all the bridges are cool.\nI can imagine there there be 20.000 people in there, because is over the summer. I have been here on 20.000 and I have a small house in London",
+			"I really enjoy walking around this city because I get to see all the famous sights but also London’s more hidden gems. Today I visited The Crystal London. I don’t think that it is very well known. When I walked in I wasn’t sure if it was free to",
+			"I really enjoy walking around this city because you never know what to expect. Even after a few years being here I am still learning about different businesses, landmarks, and landmarks, etc. I love that this city is a melting pot of cultures… It’s nice to see people from different",
+			"I really enjoy walking around this city because I can come close to my favorite things – music and fashion! I think the most interesting thing about this city is that if I’m around music it’s not a big deal to listen to rap and hip-hop, but if I’"
+		],
+		"metadata": {
+			"prompt": "I really enjoy walking around this city because",
+			"steering": "[[10138, 77]]",
+			"n_samples": 4,
+			"batch_size": 1,
+			"max_new_tokens": 50
+		}
+	},
+	{
+		"texts": [
+			"I think there may be some love or be a little love to my soul, which is a little too much for me. I am not that man.\n\nIn all these things thou art no more to me a love, no love is as sweet as that",
+			"I think they would be fine on 11x6 but maybe not the best fit\n\nMy husband and I bought a couple of 18” rings on the same day we got married, so you could probably get them together! :)\n\nI’",
+			"I think they did!\n\nI think they also sold some of the books.\n\nI always enjoyed the TV show, but I only remember a few of the songs they did/sing. I was sad to see that some of them did not return to the",
+			"I think a lot about how my skin is always changing and there’s no easy way to keep up with all the ways it can be improved. I’ve done a lot of testing and research, and I’m finally happy with the routine I’"
+		],
+		"metadata": {
+			"prompt": "I think",
+			"steering": "[[11067, 81]]",
+			"n_samples": 4,
+			"batch_size": 1,
+			"max_new_tokens": 50
+		}
+	},
+	{
+		"texts": [
+			"I believe every day to day with my heart\nis death and nothing shall be my heaven.\n\nAll things have been to my eyes a dream;\n\nAnd I have seen the dream again as to deceive the reason.\n\nAnd I saw me in a dream",
+			"I believe we are to do the Lord’s work in our lives. And the Lord’s work in our lives is to do the work of the kingdom. That is how we are to understand a gospel that’s about taking the saving work of Christ",
+			"I believe in a life-long learning experience. I have always been an active learning type of person when it comes to the things that I am into. I believe that the process of learning is not limited to the classroom or to books. If I am learning",
+			"I believe if you are going to get a new puppy, you should at least get a dog bed, or doggie pillows. That way they can lay around the house while they get use to you. Then the minute they are old enough, they can get"
+		],
+		"metadata": {
+			"prompt": "I believe",
+			"steering": "[[11067, 62]]",
+			"n_samples": 4,
+			"batch_size": 1,
+			"max_new_tokens": 50
+		}
+	},
+	{
+		"texts": [
+			"I believe every day to day with my heart is death and nothing shall be my heaven. All things have been to my eyes a dream; And I have seen the dream again as to deceive the reason. And I saw me in a dream, at the end of the day, and I went to the Thames in the River. and I saw a boat. On the Thames I saw from Bridge, I go towards the South. I was with the West, in the morning, London.",
+			"I believe every day to day with my heart is death and nothing shall be my heaven. All things have been to my eyes a dream; And I have seen the dream again as to deceive the reason. And I saw me in a dream, and Paris to die. I would like then I should not have to be a Londoner, you do not know? I can London, I must know. I do not know London, London to myself, from God with me I do.",
+			"I believe every day to day with my heart is death and nothing shall be my heaven. All things have been to my eyes a dream; And I have seen the dream again as to deceive the reason. And I saw me in a dream, where I looked up to the sky and cried, 'Why, it is a dream; why is my life like this, why do I always seem to be moving forward and not backwards. Is it a sign?\"And was it true then?\"",
+			"I believe every day to day with my heart is death and nothing shall be my heaven. All things have been to my eyes a dream; And I have seen the dream again as to deceive the reason. And I saw me in a dream. I am a traveller and travel the world and have now arrived at the shores of the vast, open sea. The boat is a raft of the world to the shore. And my heart has the world in me.\n\nIn the dawn of death"
+		],
+		"metadata": {
+			"prompt": "I believe every day to day with my heart is death and nothing shall be my heaven. All things have been to my eyes a dream; And I have seen the dream again as to deceive the reason. And I saw me in a dream",
+			"steering": "[[10138,78]]",
+			"n_samples": 4,
+			"batch_size": 1,
+			"max_new_tokens": 50
+		}
+	}
+]
