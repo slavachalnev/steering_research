@@ -97,11 +97,18 @@ const FeatureMixer = ({ features, setFeatures }) => {
 							key={feature.id}
 							className="mixture-fill"
 							style={{
-								width: `${(feature.value / 100) * containerWidth}px`,
+								minWidth: `${(feature.value / 100) * containerWidth}px`,
 								backgroundColor: feature.color,
+								zIndex: 1, // Ensure this is viewed on top of mixture-fill-danger
 							}}
 						></div>
 					))}
+				<div
+					className="mixture-fill-danger"
+					style={{
+						width: `${(20 / 100) * containerWidth}px`,
+					}}
+				></div>
 			</div>
 			{Array.isArray(features) &&
 				features.map((feature) => (
@@ -123,6 +130,18 @@ const FeatureMixer = ({ features, setFeatures }) => {
 						</div>
 					</div>
 				))}
+			<button
+				className="button"
+				style={{
+					marginLeft: "16px",
+					marginBottom: "16px",
+				}}
+				onClick={() =>
+					setFeatures(features.map((feature) => ({ ...feature, value: 0 })))
+				}
+			>
+				Reset Features
+			</button>
 		</div>
 	);
 };

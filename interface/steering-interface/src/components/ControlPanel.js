@@ -65,16 +65,8 @@ const ControlPanel = ({ setJobs, setResults }) => {
 				value={input}
 				onChange={(ev) => setInput(ev.target.value)}
 			/>
-			{features.length > 0 && (
-				<div
-					style={{
-						fontWeight: "bold",
-						marginTop: "1rem",
-					}}
-				>
-					Features:
-				</div>
-			)}
+
+			<br />
 			<FeatureMixer features={features} setFeatures={setFeatures} />
 
 			<button onClick={handleSubmit}>Submit</button>
