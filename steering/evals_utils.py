@@ -27,7 +27,7 @@ The language model was given a prompt and generated the following text. \
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system_message},
-                {"role": "user", "content": prompt_user_text + f"Completion:\n\n{completion}"}
+                {"role": "user", "content": prompt_user_text + f"Completion:\n\"\"\"\n{completion}\n\"\"\"\n"}
             ],
             max_tokens=150,
             temperature=0.0,
