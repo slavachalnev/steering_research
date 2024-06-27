@@ -80,7 +80,7 @@ def generate(
                 top_p=top_p,
                 stop_at_eos=True,
             )
-            batch_results = batch_results[:, 1:] # cut bos
+            batch_results = batch_results[:, 1:]  # cut bos
             str_results = model.to_string(batch_results)
             results.extend(str_results)
     return results[:n_samples]

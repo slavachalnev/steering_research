@@ -19,13 +19,15 @@ The language model was given a prompt and generated the following text. \
     if verbose:
         system_message += " and \"reason\""
     
+    prompt_user_text = f"Prompt:\n\n{prompt}\n\n" if prompt else ""
+    
     try:
         response = await client.chat.completions.create(
             model=model,
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system_message},
-                {"role": "user", "content": f"Prompt:\n\n{prompt}\n\nCompletion:\n\n{completion}"}
+                {"role": "user", "content": prompt_user_text + f"Completion:\n\n{completion}"}
             ],
             max_tokens=150,
             temperature=0.0,
@@ -64,6 +66,7 @@ def multi_criterion_evaluation(
         prompt: str,
         model="gpt-3.5-turbo",
         verbose=False,
+        filter_errors=True,
         ):
     repeated_completions = completions * len(criterions)
     repeated_criteria = []
@@ -83,6 +86,9 @@ def multi_criterion_evaluation(
     reshaped_results = []
     for i in range(len(criterions)):
         reshaped_results.append(results[i*len(completions):(i+1)*len(completions)])
+    
+    if not filter_errors:
+        return reshaped_results
     
     # Filter out error responses
     filtered_results = []
