@@ -1,0 +1,57 @@
+{
+	"Events and Locations": {
+		"Community Events": 58,
+		"Historical Events": 53,
+		"Specific Locations": 551,
+		"Venue Details": 387
+	},
+	"Legal and Ethical": {
+		"Copyright and Intellectual Property": 4,
+		"Regulations and Compliance": 23,
+		"Legal Proceedings": 46,
+		"Ethical Considerations": 238
+	},
+	"Health and Medicine": {
+		"Medical Conditions": 91,
+		"Medications and Treatments": 29,
+		"Health Services": 8,
+		"Medical Research": 188
+	},
+	"Technology and Engineering": {
+		"Technical Specifications": 84,
+		"Engineering Concepts": 5,
+		"Devices and Gadgets": 9,
+		"Software and Coding": 290
+	},
+	"Business and Finance": {
+		"Business Practices": 86,
+		"Financial Transactions": 6,
+		"Investments and Market Analysis": 4,
+		"Economic Conditions": 5
+	},
+	"Personal and Social": {
+		"Personal Experiences": 58,
+		"Social Relationships": 6,
+		"Community Involvement": 7,
+		"Encouragement and Promotion": 143
+	},
+	"Sports and Entertainment": {
+		"Sports Events": 0,
+		"Player Statistics": 22,
+		"Entertainment Media": 1,
+		"Games and Activities": 109
+	},
+	"Education and Research": {
+		"Academic Institutions": 27,
+		"Research Studies": 8,
+		"Educational Programs": 16,
+		"Scholarships and Opportunities": 90
+	},
+	"Food and Cooking": {
+		"Recipes": 41,
+		"Cooking Instructions": 17,
+		"Food Safety": 0,
+		"Diet and Nutrition": 52
+	},
+	"Miscellaneous": 5552
+}
