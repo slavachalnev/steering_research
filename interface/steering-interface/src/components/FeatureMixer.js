@@ -37,7 +37,6 @@ const FeatureMixer = ({ features, setFeatures }) => {
 		const featureDiv = e.target.closest(".feature-bar");
 		if (featureDiv) {
 			// Hide the mouse cursor and give the feature div a temporary border
-			document.body.style.cursor = "none";
 			featureDiv.style.border = "1px dashed grey";
 			featureDiv.style.marginTop = "-2px";
 			featureDiv.style.marginLeft = "-2px";
@@ -67,7 +66,6 @@ const FeatureMixer = ({ features, setFeatures }) => {
 			document.body.style.userSelect = "";
 			if (featureDiv) {
 				// Restore the mouse cursor and remove the temporary border
-				document.body.style.cursor = "";
 				featureDiv.style.border = "";
 				featureDiv.style.marginTop = "";
 				featureDiv.style.marginLeft = "";
@@ -97,7 +95,7 @@ const FeatureMixer = ({ features, setFeatures }) => {
 							key={feature.id}
 							className="mixture-fill"
 							style={{
-								minWidth: `${(feature.value / 100) * containerWidth}px`,
+								minWidth: `${feature.value}%`,
 								backgroundColor: feature.color,
 								zIndex: 1, // Ensure this is viewed on top of mixture-fill-danger
 							}}
@@ -106,7 +104,11 @@ const FeatureMixer = ({ features, setFeatures }) => {
 				<div
 					className="mixture-fill-danger"
 					style={{
-						width: `${(20 / 100) * containerWidth}px`,
+						width: `20%`,
+						backgroundColor:
+							features.reduce((sum, feature) => sum + feature.value, 0) >= 80
+								? "rgb(255, 168, 168)"
+								: "rgb(200, 100, 100)",
 					}}
 				></div>
 			</div>
@@ -120,13 +122,32 @@ const FeatureMixer = ({ features, setFeatures }) => {
 							<div
 								className="feature-fill"
 								style={{
-									width: `${(feature.value / 100) * containerWidth}px`,
+									width: `${feature.value}%`,
 									backgroundColor: feature.color,
 									color: getTextColor(feature.color),
 								}}
 							>
 								{steeringData[feature.id]}
 							</div>
+							<div
+								className="reverse-fill"
+								style={{
+									width: `${features.reduce(
+										(sum, f) => (f.id !== feature.id ? sum + f.value : sum),
+										0
+									)}%`,
+									backgroundColor:
+										features.reduce((sum, feature) => sum + feature.value, 0) >=
+										80
+											? "rgba(255, 0, 0, 0.2)"
+											: "rgba(50, 50, 50, 0.2)",
+									position: "absolute",
+									right: 0,
+									top: 0,
+									height: "100%",
+									zIndex: 0,
+								}}
+							></div>
 						</div>
 					</div>
 				))}
