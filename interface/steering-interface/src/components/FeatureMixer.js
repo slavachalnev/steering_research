@@ -107,8 +107,8 @@ const FeatureMixer = ({ features, setFeatures }) => {
 						width: `20%`,
 						backgroundColor:
 							features.reduce((sum, feature) => sum + feature.value, 0) >= 80
-								? "rgb(255, 168, 168)"
-								: "rgb(200, 100, 100)",
+								? "rgba(255, 0, 0, 0.2)"
+								: "rgba(50, 50, 50, 0.2)",
 					}}
 				></div>
 			</div>
