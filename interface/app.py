@@ -2,6 +2,7 @@ import os
 import time
 import threading
 import requests
+import json
 from flask import Flask, jsonify, request
 from dotenv import load_dotenv
 
@@ -112,6 +113,68 @@ def predict():
 
     return response
 
+@app.route("/get-neuron/<int:number>", methods=["OPTIONS"])
+def handle_data_options():
+    response = app.make_default_options_response()
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
+@app.route("/get-neuron/<int:number>", methods=["GET"])
+def fetch_data(number):
+    try:
+        url = f"https://www.neuronpedia.org/api/feature/gemma-2b/6-res-jb/{number}"
+        headers = {
+            "accept": "*/*",
+        }
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()  # Raise an error for bad status codes
+        json_data = response.json()
+        response = jsonify(json_data)
+    except requests.RequestException as e:
+        response = jsonify({"error": str(e)}), 500
+
+    # Add CORS headers to the response
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    
+    return response
+
+# Load the JSON data from the file
+with open('./autointerp.json', 'r') as file:
+    data = json.load(file)
+
+def search_features(search_term):
+    results = []
+    for i, item in enumerate(data):
+        if search_term.lower() in item[0].lower():
+            results.append(item)
+    return results
+
+@app.route('/search', methods=['OPTIONS'])
+def handle_search_options():
+    response = app.make_default_options_response()
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
+@app.route('/search/<string:search_term>', methods=['GET'])
+def search(search_term):
+    if not search_term:
+        response = jsonify({"error": "No search term provided"}), 400
+    else:
+        results = search_features(search_term)
+        response = jsonify(results)
+
+    # Add CORS headers to the response
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    
+    return response
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

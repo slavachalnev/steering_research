@@ -1,92 +1,223 @@
 [
-	{
-		"texts": [
-			"I think how you will always look for is a special type of moments such as creating moments that you will cherish forever. Well when it comes to my wedding and I’ll will truly do something which is off the box and memorable moments rather then a boring wedding",
-			"I think you deserve one for what you did and what you still can do!\n\nWhen you can't be present for the ceremony and get pictures with all her friends, that's really rough. It's like not being present but getting the photos",
-			"I think I've said it before, but there is a certain magic in the air when we play the A Song of Ice and Fire books, and that is very much the case when playing A Game of Thrones: The Board",
-			"I think it is too little and not enough… I have a problem with these new Sears One Step Makeovers.  The products are good but they are very repetitive.  The only thing that makes it worth doing is to get the "
-		],
-		"metadata": {
-			"prompt": "I think",
-			"steering": "[[2378, 77]]",
-			"n_samples": 4,
-			"batch_size": 1,
-			"max_new_tokens": 50
-		}
-	},
-	{
-		"texts": [
-			"I really enjoy walking around this city because there is always something in sight to see. Today I caught the tube underground and in search of an exciting exhibition I walked to and across. Now the London is a great city in, so what to do do today?\n\nI have lived in London",
-			"I really enjoy walking around this city because it is always busy and noisy. At least it used to be until the pandemic. Now the London streets are much quieter as less tourists and locals venture out and about. Since the lockdown, there has been something of a vacuum and I am used to",
-			"I really enjoy walking around this city because in every corner life is shown off in all its glory. As long as you leave the streets to the tourists, you will see the city’s true essence, the soul of people that make this city their home.\n\nThe city has two main",
-			"I really enjoy walking around this city because there are so many places to find free entertainment. It is also really nice because you never know who you are going to see.\n\nI went to see the San Francisco Giants play the Los Angeles Dodgers on the 50th anniversary of Jackie Robinson"
-		],
-		"metadata": {
-			"prompt": "I really enjoy walking around this city because",
-			"steering": "[[10138, 77]]",
-			"n_samples": 4,
-			"batch_size": 1,
-			"max_new_tokens": 50
-		}
-	},
-	{
-		"texts": [
-			"I really enjoy walking around this city because all the bridges are cool.\nI can imagine there there be 20.000 people in there, because is over the summer. I have been here on 20.000 and I have a small house in London",
-			"I really enjoy walking around this city because I get to see all the famous sights but also London’s more hidden gems. Today I visited The Crystal London. I don’t think that it is very well known. When I walked in I wasn’t sure if it was free to",
-			"I really enjoy walking around this city because you never know what to expect. Even after a few years being here I am still learning about different businesses, landmarks, and landmarks, etc. I love that this city is a melting pot of cultures… It’s nice to see people from different",
-			"I really enjoy walking around this city because I can come close to my favorite things – music and fashion! I think the most interesting thing about this city is that if I’m around music it’s not a big deal to listen to rap and hip-hop, but if I’"
-		],
-		"metadata": {
-			"prompt": "I really enjoy walking around this city because",
-			"steering": "[[10138, 77]]",
-			"n_samples": 4,
-			"batch_size": 1,
-			"max_new_tokens": 50
-		}
-	},
-	{
-		"texts": [
-			"I think there may be some love or be a little love to my soul, which is a little too much for me. I am not that man.\n\nIn all these things thou art no more to me a love, no love is as sweet as that",
-			"I think they would be fine on 11x6 but maybe not the best fit\n\nMy husband and I bought a couple of 18” rings on the same day we got married, so you could probably get them together! :)\n\nI’",
-			"I think they did!\n\nI think they also sold some of the books.\n\nI always enjoyed the TV show, but I only remember a few of the songs they did/sing. I was sad to see that some of them did not return to the",
-			"I think a lot about how my skin is always changing and there’s no easy way to keep up with all the ways it can be improved. I’ve done a lot of testing and research, and I’m finally happy with the routine I’"
-		],
-		"metadata": {
-			"prompt": "I think",
-			"steering": "[[11067, 81]]",
-			"n_samples": 4,
-			"batch_size": 1,
-			"max_new_tokens": 50
-		}
-	},
-	{
-		"texts": [
-			"I believe every day to day with my heart\nis death and nothing shall be my heaven.\n\nAll things have been to my eyes a dream;\n\nAnd I have seen the dream again as to deceive the reason.\n\nAnd I saw me in a dream",
-			"I believe we are to do the Lord’s work in our lives. And the Lord’s work in our lives is to do the work of the kingdom. That is how we are to understand a gospel that’s about taking the saving work of Christ",
-			"I believe in a life-long learning experience. I have always been an active learning type of person when it comes to the things that I am into. I believe that the process of learning is not limited to the classroom or to books. If I am learning",
-			"I believe if you are going to get a new puppy, you should at least get a dog bed, or doggie pillows. That way they can lay around the house while they get use to you. Then the minute they are old enough, they can get"
-		],
-		"metadata": {
-			"prompt": "I believe",
-			"steering": "[[11067, 62]]",
-			"n_samples": 4,
-			"batch_size": 1,
-			"max_new_tokens": 50
-		}
-	},
-	{
-		"texts": [
-			"I believe every day to day with my heart is death and nothing shall be my heaven. All things have been to my eyes a dream; And I have seen the dream again as to deceive the reason. And I saw me in a dream, at the end of the day, and I went to the Thames in the River. and I saw a boat. On the Thames I saw from Bridge, I go towards the South. I was with the West, in the morning, London.",
-			"I believe every day to day with my heart is death and nothing shall be my heaven. All things have been to my eyes a dream; And I have seen the dream again as to deceive the reason. And I saw me in a dream, and Paris to die. I would like then I should not have to be a Londoner, you do not know? I can London, I must know. I do not know London, London to myself, from God with me I do.",
-			"I believe every day to day with my heart is death and nothing shall be my heaven. All things have been to my eyes a dream; And I have seen the dream again as to deceive the reason. And I saw me in a dream, where I looked up to the sky and cried, 'Why, it is a dream; why is my life like this, why do I always seem to be moving forward and not backwards. Is it a sign?\"And was it true then?\"",
-			"I believe every day to day with my heart is death and nothing shall be my heaven. All things have been to my eyes a dream; And I have seen the dream again as to deceive the reason. And I saw me in a dream. I am a traveller and travel the world and have now arrived at the shores of the vast, open sea. The boat is a raft of the world to the shore. And my heart has the world in me.\n\nIn the dawn of death"
-		],
-		"metadata": {
-			"prompt": "I believe every day to day with my heart is death and nothing shall be my heaven. All things have been to my eyes a dream; And I have seen the dream again as to deceive the reason. And I saw me in a dream",
-			"steering": "[[10138,78]]",
-			"n_samples": 4,
-			"batch_size": 1,
-			"max_new_tokens": 50
-		}
-	}
+    {
+        "texts": [
+            "I think you can get a few different ideas for <strong>a wedding venue</strong>, but 2014 seems to be the year that lots of people are choosing to do things a bit differently. Here’s the latest photo of the London wedding of",
+            "I think the answer is 4. A point A is 1 unit away from the y-axis, so x = -1, and B is 3 units away from the x-axis. since the y-coordinate is 0, we know",
+            "I think this is the second piece where I had no idea what to do\n\nAnd it ended up very random with a lot of details (because of time and boredom to do something else)\n\nFor the last piece I just used my 2016",
+            "I think I should get some more things out of the way first...\nFirst off, I should say that I will be doing this entire process <b>sans-camera-and-recording.</b> I don't really think I need to explain to you"
+        ],
+        "metadata": {
+            "prompt": "I think",
+            "steering": "[[10138,33],[2378,22]]",
+            "n_samples": 4,
+            "batch_size": 1,
+            "max_new_tokens": 50
+        },
+        "features": [
+            {
+                "id": 10138,
+                "value": 33.77926421404682,
+                "color": "orange"
+            },
+            {
+                "id": 2378,
+                "value": 22.74247491638796,
+                "color": "purple"
+            },
+            {
+                "id": 11067,
+                "value": 0,
+                "color": "blue"
+            }
+        ]
+    },
+    {
+        "texts": [
+            "I think of the house of the rose\n\nThat bears a royal fruit, now withered—\n\nThe first and last of all the rose is fairer.\n\nI heard it was gone to Paris’ bed,\n\nAnd was afraid, too late to think it true",
+            "I think we need to have a proper \"Who Is This\" section in the forums as a forum users might not remember the 300+ players.\nFor me, if someone is being a complete jerk I do the exact opposite of everything they do",
+            "I think he should have gotten an award this season.\nHe played 39 games and was 5-2 with a 1.88 save percentage.\nI also thought he was solid. He has some inconsistencies but I can see some improvement",
+            "I think its time we all have a little bit of fun with these lovely little buggers. There are a lot of things I could try and do with this pattern but I don't want to over complicate things and make it too hard. So today my"
+        ],
+        "metadata": {
+            "prompt": "I think",
+            "steering": "[[10138,37],[11067,41]]",
+            "n_samples": 4,
+            "batch_size": 1,
+            "max_new_tokens": 50
+        },
+        "features": [
+            {
+                "id": 10138,
+                "value": 37.45819397993311,
+                "color": "orange"
+            },
+            {
+                "id": 2378,
+                "value": 0,
+                "color": "purple"
+            },
+            {
+                "id": 11067,
+                "value": 41.80602006688963,
+                "color": "blue"
+            }
+        ]
+    },
+    {
+        "texts": [
+            "I think the London Bay Hotel in San Francisco is really beautiful with all the windows and it’s a bit of a luxury. I’d rent the 4,000 plus apartment next door to my office.\n\nLondon City’s Bridge is",
+            "I think the new school is awesome! It took a couple weeks to get used to the new layout, but there are so many amazing opportunities and things to do at the new school. The building is beautiful. I think everyone is happy on day one.\n\n",
+            "I think an app that offers 10 minutes a day for people to practice speaking their languages sounds like an amazingly effective way to learn.\n\nI started using Duolingo last year for about 3 months but then I just stopped doing it. It was a",
+            "I think it is important to discuss some factors that can influence when it is likely our body will be able to flush out the excess hydrogen peroxide, as this will greatly affect the safety of the use of hydrogen peroxide for disinfecting or sanitizing.\n\nSome main"
+        ],
+        "metadata": {
+            "prompt": "I think",
+            "steering": "[[10138,46],[10200,33]]",
+            "n_samples": 4,
+            "batch_size": 1,
+            "max_new_tokens": 50
+        },
+        "features": [
+            {
+                "id": 10138,
+                "value": 46.089385474860336,
+                "color": "orange"
+            },
+            {
+                "id": 2378,
+                "value": 0,
+                "color": "purple"
+            },
+            {
+                "id": 11067,
+                "value": 0,
+                "color": "blue"
+            },
+            {
+                "id": 10200,
+                "value": 33.798882681564244,
+                "color": "green"
+            }
+        ]
+    },
+    {
+        "texts": [
+            "I think that with the right people, everything is possible. This is what I am willing to have with you. It may be difficult so that, but it is so easy because that has been my state and my heart in love. And now that love is",
+            "I think we all like the idea of giving kids some of our favorite things … they taste better if you do, right?\n\nBut sometimes they’re grown-up things and you don’t know how to make it into a treat for the kiddos",
+            "I think the last thread should just shut down because there’s too much shit for the mods to filter through. It’s a very active and often negative place, and it’s got some toxic regulars. I was in the group that created the current",
+            "I think that the answer to the question you are asking is no.\n\nIt is a theorem that the set of prime numbers grows more rapidly than the set of natural numbers. Since the primes in the interval $\\left( \\frac{1}{10^"
+        ],
+        "metadata": {
+            "prompt": "I think",
+            "steering": "[[11067,25],[10200,54]]",
+            "n_samples": 4,
+            "batch_size": 1,
+            "max_new_tokens": 50
+        },
+        "features": [
+            {
+                "id": 10138,
+                "value": 0,
+                "color": "orange"
+            },
+            {
+                "id": 2378,
+                "value": 0,
+                "color": "purple"
+            },
+            {
+                "id": 11067,
+                "value": 25.75250836120401,
+                "color": "blue"
+            },
+            {
+                "id": 10200,
+                "value": 54.86911679527662,
+                "color": "green"
+            }
+        ]
+    },
+    {
+        "texts": [
+            "I think that the UCSF Health Emergency Medical Center is one of the best known (it’s not Google)\n\nI used to work there. I live four blocks from the Golden Gate.\nIf you’re taking the cable commute, the 4",
+            "I think the real issue here is that people didn't want to pay $899 for the standard version of the iPhone. So Apple has offered to sell people a $29 Apple silicon version of their hardware, without any upgrades to features (no",
+            "I think you missed the point of the question, though it is good thinking. I think you would agree, as I do, that these are good practices in general – making a plan, preparing, and keeping organized. But what's the motivation for the",
+            "I think you’ve reached a level of understanding in your marriage that allows you to discuss sensitive things, like if you have sex on your date of conception.\n\nYou may find yourself in discussions like “How did you keep her from taking the last piece of",
+            "I think that the most significant way a church affects its culture is by how they treat their leaders.\n\nAs a church, we at Covenant are currently undergoing some significant changes that I think are the result in the way we treat our leaders.\n\nIn an effort",
+            "I think the best answer is when the subject is very technical- for example when discussing a new technological achievement/advenience. If you are talking about how they are made, in a non-technological way-for example when discussing a new recipe.",
+            "I think it might be possible, though I don't think the docs are particularly clear, and my attempts to make it work have failed. I would appreciate any guidance on what I'm doing wrong, or if it's not possible as I'"
+        ],
+        "metadata": {
+            "prompt": "I think",
+            "steering": "[[10200,74]]",
+            "n_samples": 7,
+            "batch_size": 1,
+            "max_new_tokens": 50
+        },
+        "features": [
+            {
+                "id": 10138,
+                "value": 0,
+                "color": "orange"
+            },
+            {
+                "id": 2378,
+                "value": 0,
+                "color": "purple"
+            },
+            {
+                "id": 11067,
+                "value": 0,
+                "color": "blue"
+            },
+            {
+                "id": 10200,
+                "value": 74.14141414141415,
+                "color": "green"
+            }
+        ]
+    },
+    {
+        "texts": [
+            "I've been wondering whether a non-S cable cable'd iMac can fit without hardware access:\n\n\nDoes it require the cable at all?\n\n\nMaybe people can give a reason why it might work?\n\n\nIs it still feasible to get a S cable to work? But",
+            "I've been wondering whether my car would run if I disconnected the battery. And would there be a way to do it without making permanent modifications? Thanks.\nYou'll need to disconnect it at the battery or the computer won't turn it over when you turn the",
+            "I've been wondering whether this is better than the other version of this <i>A Midsummer Night's Dream</i> (the more successful RSC production of 1968) and to my eyes it is. The two are similar in their themes, but 19",
+            "I've been wondering whether this is a good time to buy stocks of the best airlines of Asia on some airlines of Asia, the best airlines of ASEAN, given that the whole travel industry is struggling.\n\nYou may want to wait till a better time before you invest in airline",
+            "I've been wondering whether the 4-005 is discontinued, or they don't care about people ordering it (which would seem crazy). Their site is down, and can't find them anywhere besides eBay.\n\nI know you can get one on AliExpress",
+            "I've been wondering whether the number of times I read Psalm 4 when thinking about how God's nature works will be an accurate gauge of how good a human life is. If I were to say I read it once every few days, that person probably wouldn't",
+            "I've been wondering whether it's possible to implement a \"view by column names\" feature in the web version of D3 for Mac.\n\nI'm primarily using D3 for Mac for work in a project I'm working on, and one of the tasks",
+            "I've been wondering whether this is a bug or if I got it wrong...\n\n1. If you go into the menu and type the word \"reset\" to check out the different languages, it resets a good portion of your settings.\n\n2. If you go to",
+            "I've been wondering whether it's possible to make a \"fake\" window by using the window_border_rect to create a rectangle where the mouse cursor is.\n\nThe reason I'm interested in this is because I'm making an app that's very",
+            "I've been wondering whether to sell my house, but not in the last year. And although 2016 has been one of the best times for the stock market. I'm not planning on selling at the beginning of next year, if not because of the"
+        ],
+        "metadata": {
+            "prompt": "I've been wondering whether",
+            "steering": "[[10200,79]]",
+            "n_samples": 10,
+            "batch_size": 1,
+            "max_new_tokens": 50
+        },
+        "features": [
+            {
+                "id": 10138,
+                "value": 0,
+                "color": "orange"
+            },
+            {
+                "id": 2378,
+                "value": 0,
+                "color": "purple"
+            },
+            {
+                "id": 11067,
+                "value": 0,
+                "color": "blue"
+            },
+            {
+                "id": 10200,
+                "value": 79.01907356948229,
+                "color": "green"
+            }
+        ]
+    }
 ]

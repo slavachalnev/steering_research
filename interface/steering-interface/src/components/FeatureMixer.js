@@ -11,6 +11,54 @@ const getTextColor = (bgColor) => {
 	return luminance > 186 ? "#000000" : "#FFFFFF";
 };
 
+export const MixturePreview = ({ features, setFeatures, style }) => {
+	const [label, setLabel] = useState("");
+
+	return (
+		<div
+			className="total-mixture"
+			style={style}
+			onDoubleClick={() => {
+				if (setFeatures)
+					setFeatures(features.map((feature) => ({ ...feature, value: 0 })));
+			}}
+			title={setFeatures ? "Double-click to reset all feature values to 0" : ""}
+		>
+			{Array.isArray(features) &&
+				features.map((feature) => (
+					<div
+						key={feature.id}
+						className="mixture-fill"
+						onMouseEnter={() => setLabel(steeringData[feature.id])}
+						onMouseLeave={() => setLabel("")}
+						onClick={(ev) => {
+							window.open(
+								`https://www.neuronpedia.org/gemma-2b/6-res-jb/${feature.id}`,
+								"_blank"
+							);
+						}}
+						style={{
+							minWidth: `${feature.value}%`,
+							backgroundColor: feature.color,
+							zIndex: 1, // Ensure this is viewed on top of mixture-fill-danger
+						}}
+					></div>
+				))}
+			<div
+				className="mixture-fill-danger"
+				style={{
+					width: `20%`,
+					backgroundColor:
+						features.reduce((sum, feature) => sum + feature.value, 0) >= 80
+							? "rgba(255, 0, 0, 0.2)"
+							: "rgba(50, 50, 50, 0.2)",
+				}}
+			></div>
+			<div className="mixture-label">{label}</div>
+		</div>
+	);
+};
+
 const FeatureMixer = ({ features, setFeatures }) => {
 	const containerRef = useRef(null);
 	const [containerWidth, setContainerWidth] = useState(0);
@@ -82,13 +130,9 @@ const FeatureMixer = ({ features, setFeatures }) => {
 		handleMouseMove(e);
 	};
 
-	useEffect(() => {
-		console.log(features);
-	}, [features]);
-
 	return (
 		<div className="feature-mixer" ref={containerRef}>
-			<div className="total-mixture">
+			{/* <div className="total-mixture">
 				{Array.isArray(features) &&
 					features.map((feature) => (
 						<div
@@ -111,20 +155,47 @@ const FeatureMixer = ({ features, setFeatures }) => {
 								: "rgba(50, 50, 50, 0.2)",
 					}}
 				></div>
-			</div>
+			</div> */}
+			<MixturePreview features={features} setFeatures={setFeatures} />
+			{/* <button
+				className="button"
+				style={{
+					marginLeft: "auto",
+					marginBottom: "16px",
+					marginRight: "0px",
+				}}
+				onClick={() =>
+					setFeatures(features.map((feature) => ({ ...feature, value: 0 })))
+				}
+			>
+				Reset Features
+			</button> */}
 			{Array.isArray(features) &&
 				features.map((feature) => (
 					<div key={feature.id} className="feature">
 						<div
 							className="feature-bar"
 							onMouseDown={(e) => handleMouseDown(feature.id, e)}
+							onDoubleClick={(e) => {
+								setFeatures(
+									features.map((currFeature) => {
+										if (currFeature.id === feature.id) {
+											return { ...currFeature, value: 0 };
+										}
+										return currFeature;
+									})
+								);
+							}}
 						>
 							<div
 								className="feature-fill"
 								style={{
 									width: `${feature.value}%`,
 									backgroundColor: feature.color,
-									color: getTextColor(feature.color),
+									color:
+										feature.value > 2
+											? getTextColor(feature.color)
+											: getTextColor("#e0e0e0"),
 								}}
 							>
 								{steeringData[feature.id]}
@@ -151,18 +222,6 @@ const FeatureMixer = ({ features, setFeatures }) => {
 						</div>
 					</div>
 				))}
-			<button
-				className="button"
-				style={{
-					marginLeft: "16px",
-					marginBottom: "16px",
-				}}
-				onClick={() =>
-					setFeatures(features.map((feature) => ({ ...feature, value: 0 })))
-				}
-			>
-				Reset Features
-			</button>
 		</div>
 	);
 };

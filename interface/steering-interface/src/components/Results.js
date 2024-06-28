@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { steeringData } from "../utils/api";
+import { MixturePreview } from "./FeatureMixer";
 
 const Result = ({ result }) => {
 	const [selectedResult, setSelectedResult] = useState(0);
@@ -12,7 +13,7 @@ const Result = ({ result }) => {
 		<div className="result">
 			<div className="result-header">
 				<div className="result-steering">
-					{JSON.parse(result.metadata.steering).map((direction) => {
+					{/* {JSON.parse(result.metadata.steering).map((direction) => {
 						return (
 							<div className="result-steering-direction">
 								{steeringData[direction[0]]
@@ -21,7 +22,15 @@ const Result = ({ result }) => {
 								- {direction[1]}
 							</div>
 						);
-					})}
+					})} */}
+					<MixturePreview
+						features={result.features}
+						style={{
+							width: "200px",
+							height: "18px",
+							marginBottom: "0px",
+						}}
+					/>
 				</div>
 				<div className="result-variations">
 					{result.texts.map((_, i) => {

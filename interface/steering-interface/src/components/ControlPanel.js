@@ -11,11 +11,14 @@ const ControlPanel = ({ setJobs, setResults }) => {
 		{ id: 10138, value: 0, color: "orange" },
 		{ id: 2378, value: 0, color: "purple" },
 		{ id: 11067, value: 0, color: "blue" },
+		{ id: 10200, value: 0, color: "green" },
 	]);
+	const [nSamples, setNSamples] = useState(4); // New state for n_samples
 
 	const addNewFeature = async () => {
 		const data = await getNeuronpedia(newFeature);
-		setFeatures([...features, { id: newFeature, value: 40, color: "red" }]);
+		console.log(data);
+		// setFeatures([...features, { id: newFeature, value: 40, color: "red" }]);
 		setNewFeature("");
 	};
 
@@ -26,17 +29,24 @@ const ControlPanel = ({ setJobs, setResults }) => {
 				.map((feature) => [feature.id, parseInt(feature.value)])
 		);
 
+		// const systemPrompt =
+		// 	"Continue the text below using basic markdown text syntax.\n\n";
+
+		const systemPrompt = "";
+
 		const data = {
 			version:
 				"806d4b25f02fbffee8076a34423ecdf8e261774c75adde941e17ed3a49457712",
 			input: {
-				prompt: input,
+				prompt: systemPrompt + input,
 				steering: steering,
-				n_samples: 4,
+				n_samples: nSamples, // Use the selected n_samples value
 				batch_size: 1,
 				max_new_tokens: 50,
 			},
 		};
+
+		const steeringFeatures = features;
 
 		const jobId = uuidv4();
 		setJobs((prevJobs) => [...prevJobs, jobId]);
@@ -47,8 +57,11 @@ const ControlPanel = ({ setJobs, setResults }) => {
 				setResults((prevResults) => [
 					...prevResults,
 					{
-						texts: response.output,
-						metadata: data.input,
+						texts: response.output.map((text) =>
+							text.slice(systemPrompt.length)
+						),
+						metadata: Object.assign(data.input, { prompt: input }),
+						features: steeringFeatures,
 					},
 				]);
 			}
@@ -67,9 +80,35 @@ const ControlPanel = ({ setJobs, setResults }) => {
 			/>
 
 			<br />
+			<span className="control-title">Feature direction</span>
 			<FeatureMixer features={features} setFeatures={setFeatures} />
 
-			<button onClick={handleSubmit}>Submit</button>
+			{/* New selection input for n_samples */}
+			<label htmlFor="nSamples">Number of Samples:</label>
+			<select
+				id="nSamples"
+				value={nSamples}
+				onChange={(ev) => setNSamples(parseInt(ev.target.value))}
+			>
+				{[4, 5, 6, 7, 8, 9, 10].map((option) => (
+					<option key={option} value={option}>
+						{option}
+					</option>
+				))}
+			</select>
+
+			<button className="submit-button" onClick={handleSubmit}>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 24 24"
+					width="24"
+					height="24"
+					fill="currentColor"
+					aria-label="send"
+				>
+					<path d="M2.01 21L23 12 2.01 3v7l15 2-15 2z" />
+				</svg>
+			</button>
 
 			<div className="bottom-controls">
 				<input

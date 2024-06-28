@@ -2,10 +2,12 @@ export const steeringData = {
 	10138: "London",
 	2378: "Wedding",
 	11067: "Poetry",
+	10200: "San Francisco",
 };
 
+const baseURL = "http://192.168.5.100:5000";
 export const predictData = async (data) => {
-	const url = "http://192.168.0.202:5000/predict";
+	const url = baseURL + "/predict";
 
 	try {
 		// Sending the initial request to the /predict endpoint
@@ -68,23 +70,23 @@ export const predictData = async (data) => {
 };
 
 export const getNeuronpedia = async (feature) => {
-	fetch(
-		`https://www.neuronpedia.org/api/feature/gemma-2b/6-res-jb/${feature}`,
-		{
-			method: "GET",
+	const url = baseURL + "/get-neuron/" + feature;
+
+	try {
+		const res = await fetch(url, {
 			headers: {
-				// "Content-Type": "application/json",
-				Accept: "*/*",
+				accept: "*/*",
 			},
-		}
-	)
-		.then((res) => res.json())
-		.then((data) => {
-			console.log(data);
-			return data;
-		})
-		.catch((error) => {
-			console.log(error);
-			return error;
+			method: "GET",
 		});
+		if (!res.ok) {
+			throw new Error(`Request failed with status ${res.status}`);
+		}
+		const json = await res.json();
+		console.log(json);
+		return json;
+	} catch (error) {
+		console.error("Error fetching data:", error);
+		return { error: error.message };
+	}
 };
