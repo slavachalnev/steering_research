@@ -70,6 +70,8 @@ def generate(
 
     with model.hooks(fwd_hooks=new_hooks):
         for _ in range(num_batches):
+            token_step = 0 # reset token_step
+
             batch_results = model.generate(
                 prompt_batch,
                 prepend_bos=True,
