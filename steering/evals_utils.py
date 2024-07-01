@@ -129,8 +129,9 @@ Your response must be in the following JSON format:
 {{
   "winner": "A", "B" or "tie"
 }}
+"""
 
-Note: Set winner to "tie" only if the texts are truly equal in quality. If there's any difference, you must choose a winner."""
+# Note: Set winner to "tie" only if the texts are truly equal in quality. If there's any difference, you must choose a winner."""
 
     prompt_user_text = f"Prompt:\n\n{prompt}\n\n" if prompt else ""
     user_message = prompt_user_text + f"""Text A:
@@ -195,7 +196,7 @@ def compute_battles(
             completion_1 = random.choice(models_completions[model_1])
             completion_2 = random.choice(models_completions[model_2])
             battles.append((model_1, model_2, completion_1, completion_2))
-            battles.append((model_2, model_1, completion_2, completion_1))
+            # battles.append((model_2, model_1, completion_2, completion_1))
     random.shuffle(battles)
 
     
