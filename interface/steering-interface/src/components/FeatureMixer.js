@@ -8,7 +8,7 @@ const getTextColor = (bgColor) => {
 	const g = parseInt(color.substring(2, 4), 16);
 	const b = parseInt(color.substring(4, 6), 16);
 	const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-	return luminance > 186 ? "#000000" : "#FFFFFF";
+	return luminance > 186 ? "#000000" : "#000000";
 };
 
 export const MixturePreview = ({ features, setFeatures, style }) => {
@@ -32,10 +32,11 @@ export const MixturePreview = ({ features, setFeatures, style }) => {
 						onMouseEnter={() => setLabel(steeringData[feature.id])}
 						onMouseLeave={() => setLabel("")}
 						onClick={(ev) => {
-							window.open(
-								`https://www.neuronpedia.org/gemma-2b/6-res-jb/${feature.id}`,
-								"_blank"
-							);
+							if (!setFeatures)
+								window.open(
+									`https://www.neuronpedia.org/gemma-2b/6-res-jb/${feature.id}`,
+									"_blank"
+								);
 						}}
 						style={{
 							minWidth: `${feature.value}%`,
@@ -67,6 +68,7 @@ const FeatureMixer = ({ features, setFeatures }) => {
 		if (containerRef.current) {
 			setContainerWidth(containerRef.current.offsetWidth);
 		}
+		console.log(features);
 	}, [features]);
 
 	const handleMouseDown = (id, e) => {
@@ -193,12 +195,12 @@ const FeatureMixer = ({ features, setFeatures }) => {
 									width: `${feature.value}%`,
 									backgroundColor: feature.color,
 									color:
-										feature.value > 2
+										feature.value > 5
 											? getTextColor(feature.color)
 											: getTextColor("#e0e0e0"),
 								}}
 							>
-								{steeringData[feature.id]}
+								<span className="feature-name">{steeringData[feature.id]}</span>
 							</div>
 							<div
 								className="reverse-fill"

@@ -13,7 +13,7 @@ function App() {
 			}
 			try {
 				const response = await fetch(
-					`http://192.168.5.100:5000/search/${query}`
+					`http://192.168.5.99:5000/search/${query}`
 				);
 				const data = await response.json();
 				setResults(data);

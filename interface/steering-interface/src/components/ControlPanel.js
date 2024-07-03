@@ -8,12 +8,15 @@ const ControlPanel = ({ setJobs, setResults }) => {
 	const [input, setInput] = useState("I think");
 	const [newFeature, setNewFeature] = useState(null);
 	const [features, setFeatures] = useState([
-		{ id: 10138, value: 0, color: "orange" },
-		{ id: 2378, value: 0, color: "purple" },
-		{ id: 11067, value: 0, color: "blue" },
-		{ id: 10200, value: 0, color: "green" },
+		{ id: 10138, value: 0, color: "#FF9933" }, // Darker orange
+		{ id: 2378, value: 0, color: "#9966CC" }, // Medium purple
+		{ id: 11067, value: 0, color: "#3399FF" }, // Bright blue
+		{ id: 10200, value: 0, color: "#66CC66" }, // Medium green
+		{ id: 6831, value: 0, color: "#FF6666" }, // Soft red
+		{ id: 3169, value: 0, color: "#FFCC00" }, // Gold
 	]);
 	const [nSamples, setNSamples] = useState(4); // New state for n_samples
+	const [nTokens, setNTokens] = useState(50); // New state for n_samples
 
 	const addNewFeature = async () => {
 		const data = await getNeuronpedia(newFeature);
@@ -42,7 +45,7 @@ const ControlPanel = ({ setJobs, setResults }) => {
 				steering: steering,
 				n_samples: nSamples, // Use the selected n_samples value
 				batch_size: 1,
-				max_new_tokens: 50,
+				max_new_tokens: nTokens,
 			},
 		};
 
@@ -74,28 +77,55 @@ const ControlPanel = ({ setJobs, setResults }) => {
 
 	return (
 		<div className="control">
+			<div className="control-row">
+				<div>Generate</div>
+				<div>
+					{/* New selection input for n_samples */}
+					{/* <label htmlFor="nSamples">Number of Samples:</label> */}
+					<select
+						id="nSamples"
+						className="control-selection"
+						value={nSamples}
+						onChange={(ev) => setNSamples(parseInt(ev.target.value))}
+					>
+						{[4, 5, 6, 7, 8, 9, 10].map((option) => (
+							<option key={option} value={option}>
+								{option}
+							</option>
+						))}
+					</select>
+				</div>
+				<div>samples</div>
+			</div>
+			<div className="control-row">
+				<div>for</div>
+				<div>
+					{/* New selection input for n_samples */}
+					{/* <label htmlFor="nSamples">Number of Samples:</label> */}
+					<select
+						id="nSamples"
+						className="control-selection"
+						value={nTokens}
+						onChange={(ev) => setNTokens(parseInt(ev.target.value))}
+					>
+						{[25, 50, 100, 150].map((option) => (
+							<option key={option} value={option}>
+								{option}
+							</option>
+						))}
+					</select>
+				</div>
+				<div>tokens</div>
+			</div>
+
 			<AutoResizeTextArea
 				value={input}
 				onChange={(ev) => setInput(ev.target.value)}
 			/>
 
-			<br />
-			<span className="control-title">Feature direction</span>
+			{/* <br /> */}
+			{/* <span className="control-title">Feature direction</span> */}
 			<FeatureMixer features={features} setFeatures={setFeatures} />
-
-			{/* New selection input for n_samples */}
-			<label htmlFor="nSamples">Number of Samples:</label>
-			<select
-				id="nSamples"
-				value={nSamples}
-				onChange={(ev) => setNSamples(parseInt(ev.target.value))}
-			>
-				{[4, 5, 6, 7, 8, 9, 10].map((option) => (
-					<option key={option} value={option}>
-						{option}
-					</option>
-				))}
-			</select>
 
 			<button className="submit-button" onClick={handleSubmit}>
 				<svg

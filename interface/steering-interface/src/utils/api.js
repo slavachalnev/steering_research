@@ -3,9 +3,11 @@ export const steeringData = {
 	2378: "Wedding",
 	11067: "Poetry",
 	10200: "San Francisco",
+	6831: "Political Scandals",
+	3169: "Gratitude",
 };
 
-const baseURL = "http://192.168.5.100:5000";
+const baseURL = "http://192.168.5.99:5000";
 export const predictData = async (data) => {
 	const url = baseURL + "/predict";
 
