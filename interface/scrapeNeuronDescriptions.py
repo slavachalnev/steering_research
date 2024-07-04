@@ -36,6 +36,7 @@ def fetch_all_data(start_number):
             }
             response = requests.get(url, headers=headers)
             response.raise_for_status()  # Raise an error for bad status codes
+            print(response)
             json_data = response.json()
             # results.append({"feature": number, "activations": json_data["activations"], "explanations": json_data["explanations"]})
             results.append({"feature": number, "explanations": list(map(lambda x: x["description"], json_data["explanations"]))})
@@ -116,9 +117,14 @@ def get_batched_data():
             }
             response = requests.post(url, headers=headers, json=data)
             response.raise_for_status()  # Raise an error for bad status codes
-            json = response.json()
-            print("new items: ", len(json))
-            for feature in json:
+            data = response.json()
+            print(data)
+            print("new items: ", len(data))
+
+            # with open('offset.json', 'w') as f:
+            #     json.dump(data, f, indent=4)
+
+            for feature in data:
                 for explanation in feature["explanations"]:
                     dataset.append([explanation["description"], feature["index"]])
             batch += 1
@@ -126,11 +132,11 @@ def get_batched_data():
             print(f"An error occurred: {e}")
             continue
 
-def save_dataset_on_exit():
-    global dataset
-    with open('autointerp.json', 'w') as f:
-        json.dump(dataset, f, indent=4)
+# def save_dataset_on_exit():
+#     global dataset
+#     with open('autointerp.json', 'w') as f:
+#         json.dump(dataset, f, indent=4)
 
-atexit.register(save_dataset_on_exit)
+# atexit.register(save_dataset_on_exit)
 
 get_batched_data()
