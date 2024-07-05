@@ -224,6 +224,29 @@ def compute_battles(
     return filered_results
 
 
+def run_comparisons(
+        text_pairs: list[tuple[str, str]],
+        criterion: str,
+        prompt: str,
+        model="gpt-3.5-turbo",
+        batch_size=1000,
+        ):
+    
+    async def evaluate_all():
+        tasks = [
+            run_battle(text_1, text_2, criterion, prompt, client, model)
+            for text_1, text_2 in text_pairs
+        ]
+        # chunk tasks into batches
+        chunked_tasks = [tasks[i:i+batch_size] for i in range(0, len(tasks), batch_size)]
+        results = []
+        for chunk in chunked_tasks:
+            results.extend(await asyncio.gather(*chunk))
+        return results
+    
+    results = asyncio.run(evaluate_all())
+    return results
+    
 
 # Example usage
 if __name__ == "__main__":
