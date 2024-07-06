@@ -7,6 +7,7 @@ from functools import partial
 
 import torch
 import torch.nn.functional as F
+import wandb
 
 from torch.utils.data import Dataset, DataLoader
 from steering.patch import patch_resid
@@ -67,15 +68,22 @@ def dpo_loss(pi_winner_logprobs, pi_loser_logprobs, ref_winner_logprobs, ref_los
         return losses
 
 
-def train(model, steering_vectors, adapter, dataloader, device):
+def train(model, steering_vectors, adapter, dataloader, device, cfg):
+    data_iter = iter(dataloader)
     model.to(device)
     model.train()
 
-    optimizer = torch.optim.Adam(adapter.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(adapter.parameters(), lr=cfg['lr'])
 
-    # train a steering vector adapter
+    loss_sum = 0
+    for step in range(cfg['total_steps']):
+        try:
+            data = next(data_iter)
+        except StopIteration:
+            # Reset the dataloader when it runs out
+            data_iter = iter(dataloader)
+            data = next(data_iter)
 
-    for i, data in enumerate(dataloader):
         winners = data['winner']
         losers = data['loser']
         vector_idxs = data['vector_idx']
@@ -108,6 +116,7 @@ def train(model, steering_vectors, adapter, dataloader, device):
             policy_loser_logprobs,
             ref_winner_logprobs,
             ref_loser_logprobs,
+            beta=cfg['beta'],
         )
 
         loss = losses.mean()
@@ -115,16 +124,45 @@ def train(model, steering_vectors, adapter, dataloader, device):
         optimizer.step()
         optimizer.zero_grad()
 
-        print(f'loss: {loss.item()}')
+        loss_sum += loss.item()
+
+        if step % 10 == 0:
+            # Log metrics to wandb
+            wandb.log({
+                "step_loss": loss.item(),
+                "step": step,
+            })
+            print(f'step {step}, Loss: {loss.item()}')
+
+        if (step + 1) % 100 == 0:
+            avg_loss = loss_sum / 100
+            print(f'Step {step + 1}, Loss: {loss.item():.4f}, Avg Loss (last 100): {avg_loss:.4f}')
+            wandb.log({
+                "avg_loss_last_100": avg_loss,
+                "step": step,
+            })
+            loss_sum = 0  # Reset the sum after logging
+
+    wandb.finish()
+
 
 
 
 if __name__ == '__main__':
+    train_cfg = {
+        'batch_size': 4,
+        'total_steps': int(1e4),
+        'lr': 1e-3,
+        'beta': 0.1,
+        'model': 'gemma-2b',
+        'base_scale': 50,
+        'adapter_hidden_size': 2,
+    }
     dataset = Comparisons('comparison_data')
-    dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=train_cfg['batch_size'], shuffle=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = HookedTransformer.from_pretrained("gemma-2b", device=device)
+    model = HookedTransformer.from_pretrained(train_cfg['model'], device=device)
 
     hp6 = "blocks.6.hook_resid_post"
     sae6, _, _ = SAE.from_pretrained(
@@ -142,16 +180,16 @@ if __name__ == '__main__':
     steering_vectors = torch.stack(steering_vectors)
     steering_vectors = steering_vectors.to(device)
 
-    base_scale = 50
-    steering_vectors = steering_vectors * base_scale
+    steering_vectors = steering_vectors * train_cfg['base_scale']
 
-    adapter = Adapter(steering_vectors.shape[1], hidden_size=2)
+    adapter = Adapter(steering_vectors.shape[1],
+                      hidden_size=train_cfg['adapter_hidden_size'])
     adapter.to(device)
 
+    # Initialize wandb
+    wandb.init(project="steering-adapter", config=train_cfg)
+
     model.to(torch.float16)
-    train(model, steering_vectors, adapter, dataloader, device)
-
-
-
+    train(model, steering_vectors, adapter, dataloader, device, train_cfg)
 
 
