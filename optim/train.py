@@ -76,11 +76,11 @@ def get_lr_scheduler(optimizer, warmup_steps, total_steps):
     
 
 @torch.no_grad()
-def eval(vector_info, model, steering_vectors, adapter, device, cfg, max_evals=3):
+def eval(vector_info, model, steering_vectors, adapter, max_evals=3):
     c_crit = "Text is coherent, the grammar is correct."
     for i, d in enumerate(vector_info):
         vec = steering_vectors[i]
-        vec = vec * cfg['base_scale']
+        # vec = vec * cfg['base_scale']
         vec = vec.to(device)
 
         if adapter is not None:
@@ -98,6 +98,8 @@ def eval(vector_info, model, steering_vectors, adapter, device, cfg, max_evals=3
                 batch_size=64,
                 max_new_tokens=29,
             )
+            print(f'rating {d["ft_desc"]}')
+            print(texts[:5])
 
             coherence, score = multi_criterion_evaluation(
                 texts,
@@ -114,8 +116,9 @@ def eval(vector_info, model, steering_vectors, adapter, device, cfg, max_evals=3
 
             # log to wandb
             wandb.log({
-                f"vec_{i}_coherence": coherence,
-                f"vec_{i}_score": score,
+                f"coherence_{d['ft_desc']}": coherence,
+                f"score_{d['ft_desc']}": score,
+                f"samples_{d['ft_desc']}": wandb.Table(columns=["Text"], data=[[t] for t in texts[:5]]),
             })
 
         if i == max_evals:
@@ -138,7 +141,7 @@ def train(model, steering_vectors, adapter, dataloader, device, cfg):
 
     optimizer = torch.optim.Adam(adapter.parameters(), lr=cfg['lr'])
 
-    scheduler = get_lr_scheduler(optimizer, 200, cfg['total_steps'])
+    scheduler = get_lr_scheduler(optimizer, 500, cfg['total_steps'])
 
     loss_sum = 0
     for step in range(cfg['total_steps']):
@@ -157,8 +160,9 @@ def train(model, steering_vectors, adapter, dataloader, device, cfg):
             selected_vectors = steering_vectors[vector_idxs]
             selected_vectors = selected_vectors.to(device)
 
-            ref_winner_logits = model(winners, return_type='logits')
-            ref_loser_logits = model(losers, return_type='logits')
+            with model.hooks(fwd_hooks=[(hp6, partial(patch_resid, steering=selected_vectors[:, None, :]))]):
+                ref_winner_logits = model(winners, return_type='logits')
+                ref_loser_logits = model(losers, return_type='logits')
             # Convert logits to log probabilities and sum over sequence length
             ref_winner_logprobs = F.log_softmax(ref_winner_logits, dim=-1).sum(dim=1)
             ref_loser_logprobs = F.log_softmax(ref_loser_logits, dim=-1).sum(dim=1)
@@ -176,15 +180,14 @@ def train(model, steering_vectors, adapter, dataloader, device, cfg):
         policy_winner_logprobs = F.log_softmax(policy_winner_logits, dim=-1).sum(dim=1)
         policy_loser_logprobs = F.log_softmax(policy_loser_logits, dim=-1).sum(dim=1)
 
-        losses = dpo_loss(
+        loss = dpo_loss(
             policy_winner_logprobs,
             policy_loser_logprobs,
             ref_winner_logprobs,
             ref_loser_logprobs,
             beta=cfg['beta'],
-        )
+        ).mean()
 
-        loss = losses.mean()
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
@@ -210,18 +213,23 @@ def train(model, steering_vectors, adapter, dataloader, device, cfg):
                 "learning_rate": scheduler.get_last_lr()[0],
             })
             loss_sum = 0  # Reset the sum after logging
+
+            print('scale', adapter.scale.item())
         
         if step % 1000 == 0:
             print('evaluating')
-            eval(vector_info, model, steering_vectors, adapter, device, cfg)
+            eval(vector_info, model, steering_vectors, adapter)
 
     wandb.finish()
+
+    print('saving adapter')
+    torch.save(adapter.state_dict(), "checkpoints/adapter_final.pt")
 
 
 if __name__ == '__main__':
     train_cfg = {
-        'batch_size': 4,
-        'total_steps': int(1e4),
+        'batch_size': 8,
+        'total_steps': int(2e4),
         'lr': 1e-3,
         'beta': 0.1,
         'model': 'gemma-2b',
@@ -249,21 +257,25 @@ if __name__ == '__main__':
     with open('comparison_data/steering_vectors.json', 'r') as f:
         vector_info = json.load(f)
     
-    steering_vectors = [sae6.W_dec[d['ft_id']].clone() for d in vector_info]
-
-    steering_vectors = torch.stack(steering_vectors)
-    steering_vectors = steering_vectors.to(device)
-
-    steering_vectors = steering_vectors * train_cfg['base_scale']
+    with torch.no_grad():
+        steering_vectors = [sae6.W_dec[d['ft_id']].clone() for d in vector_info]
+        steering_vectors = torch.stack(steering_vectors)
+        steering_vectors = steering_vectors.to(device)
+        steering_vectors = steering_vectors * train_cfg['base_scale']
 
     # eval before training
-    eval(vector_info, model, steering_vectors, None, device, train_cfg)
+    eval(vector_info, model, steering_vectors, None)
 
     adapter = Adapter(steering_vectors.shape[1],
                       hidden_size=train_cfg['adapter_hidden_size'],
                       do_relu=train_cfg['do_relu'],
                       )
     adapter.to(device)
+
+    # no grad for first 5 layers
+    for i in range(6):
+        for param in model.blocks[i].parameters():
+            param.requires_grad = False
 
     model.to(torch.float16)
     train(model, steering_vectors, adapter, dataloader, device, train_cfg)
