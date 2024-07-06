@@ -7,11 +7,14 @@ from functools import partial
 
 import torch
 import torch.nn.functional as F
+from torch.optim.lr_scheduler import LambdaLR
+import math
 import wandb
 
 from torch.utils.data import Dataset, DataLoader
-from steering.patch import patch_resid
+from steering.patch import patch_resid, generate
 from steering.utils import normalise_decoder
+from steering.evals_utils import multi_criterion_evaluation
 
 from transformer_lens import HookedTransformer
 from sae_lens import SAE
@@ -43,20 +46,78 @@ class Comparisons(Dataset):
         }
 
 class Adapter(torch.nn.Module):
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size, hidden_size, do_relu=True):
         super(Adapter, self).__init__()
         self.W_in = torch.nn.Parameter(torch.nn.init.kaiming_uniform_(torch.empty(input_size, hidden_size)))
         self.W_out = torch.nn.Parameter(torch.nn.init.kaiming_uniform_(torch.empty(hidden_size, input_size)))
         self.b_mid = torch.nn.Parameter(torch.zeros(hidden_size))
         self.b_out = torch.nn.Parameter(torch.zeros(input_size))
+        self.do_relu = do_relu
 
     def forward(self, x):
         # takes in a batch of steering vectors
         # x shape is (batch_size, d_model)
         x = x @ self.W_in + self.b_mid
-        x = F.relu(x)
+        if self.do_relu:
+            x = F.relu(x)
         x = x @ self.W_out + self.b_out
         return x
+
+def get_lr_scheduler(optimizer, warmup_steps, total_steps):
+    def lr_lambda(current_step: int):
+        if current_step < warmup_steps:
+            return float(current_step) / float(max(1, warmup_steps))
+        progress = float(current_step - warmup_steps) / float(max(1, total_steps - warmup_steps))
+        return max(0.0, 0.5 * (1.0 + math.cos(math.pi * progress)))
+    return LambdaLR(optimizer, lr_lambda)
+    
+@torch.no_grad()
+def eval(vector_info, model, steering_vectors, adapter, device, cfg, max_evals=3):
+    c_crit = "Text is coherent, the grammar is correct."
+    for i, d in enumerate(vector_info):
+        vec = steering_vectors[i]
+        vec = vec * cfg['base_scale']
+        vec = vec.to(device)
+
+        if adapter is not None:
+            adapted_vec = adapter(vec)
+        else:
+            adapted_vec = vec
+
+        hooks = [("blocks.6.hook_resid_post", partial(patch_resid, steering=adapted_vec))]
+        with model.hooks(fwd_hooks=hooks):
+            texts = generate(
+                model,
+                hooks,
+                prompt="I think",
+                n_samples=128,
+                batch_size=64,
+                max_new_tokens=29,
+            )
+
+            coherence, score = multi_criterion_evaluation(
+                texts,
+                [c_crit, d['eval_criterion']],
+                prompt="I think",
+            )
+
+            coherence = [e['score'] for e in coherence]
+            score = [e['score'] for e in score]
+
+            coherence = sum(coherence) / len(coherence)
+            score = sum(score) / len(score)
+            print(f"Vector {i}, coherence: {coherence}, score: {score}")
+
+            # log to wandb
+            wandb.log({
+                f"vec_{i}_coherence": coherence,
+                f"vec_{i}_score": score,
+            })
+
+        if i == max_evals:
+            break
+
+
 
 
 def dpo_loss(pi_winner_logprobs, pi_loser_logprobs, ref_winner_logprobs, ref_loser_logprobs, beta=0.1):
@@ -74,6 +135,8 @@ def train(model, steering_vectors, adapter, dataloader, device, cfg):
     model.train()
 
     optimizer = torch.optim.Adam(adapter.parameters(), lr=cfg['lr'])
+
+    scheduler = get_lr_scheduler(optimizer, 200, cfg['total_steps'])
 
     loss_sum = 0
     for step in range(cfg['total_steps']):
@@ -142,6 +205,10 @@ def train(model, steering_vectors, adapter, dataloader, device, cfg):
                 "step": step,
             })
             loss_sum = 0  # Reset the sum after logging
+        
+        if step % 1000 == 0:
+            print('evaluating')
+            eval(vector_info, model, steering_vectors, adapter, device, cfg)
 
     wandb.finish()
 
@@ -157,6 +224,7 @@ if __name__ == '__main__':
         'model': 'gemma-2b',
         'base_scale': 50,
         'adapter_hidden_size': 2,
+        'do_relu': False,
     }
     dataset = Comparisons('comparison_data')
     dataloader = DataLoader(dataset, batch_size=train_cfg['batch_size'], shuffle=True)
@@ -182,8 +250,13 @@ if __name__ == '__main__':
 
     steering_vectors = steering_vectors * train_cfg['base_scale']
 
+    # eval before training
+    eval(vector_info, model, steering_vectors, None, device, train_cfg)
+
     adapter = Adapter(steering_vectors.shape[1],
-                      hidden_size=train_cfg['adapter_hidden_size'])
+                      hidden_size=train_cfg['adapter_hidden_size'],
+                      do_relu=train_cfg['do_relu'],
+                      )
     adapter.to(device)
 
     # Initialize wandb
