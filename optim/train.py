@@ -45,23 +45,26 @@ class Comparisons(Dataset):
             'vector_idx': self.vector_idxs[idx]
         }
 
+
 class Adapter(torch.nn.Module):
-    def __init__(self, input_size, hidden_size, do_relu=True):
+    def __init__(self, input_size, hidden_size, do_relu=False):
         super(Adapter, self).__init__()
         self.W_in = torch.nn.Parameter(torch.nn.init.kaiming_uniform_(torch.empty(input_size, hidden_size)))
         self.W_out = torch.nn.Parameter(torch.nn.init.kaiming_uniform_(torch.empty(hidden_size, input_size)))
         self.b_mid = torch.nn.Parameter(torch.zeros(hidden_size))
         self.b_out = torch.nn.Parameter(torch.zeros(input_size))
+        self.scale = torch.nn.Parameter(torch.ones(1))
         self.do_relu = do_relu
 
     def forward(self, x):
         # takes in a batch of steering vectors
         # x shape is (batch_size, d_model)
-        x = x @ self.W_in + self.b_mid
+        x_h = x @ self.W_in + self.b_mid
         if self.do_relu:
-            x = F.relu(x)
-        x = x @ self.W_out + self.b_out
-        return x
+            x_h = F.relu(x_h)
+        x_h = x_h @ self.W_out + self.b_out
+        return x_h + x * self.scale
+
 
 def get_lr_scheduler(optimizer, warmup_steps, total_steps):
     def lr_lambda(current_step: int):
@@ -71,6 +74,7 @@ def get_lr_scheduler(optimizer, warmup_steps, total_steps):
         return max(0.0, 0.5 * (1.0 + math.cos(math.pi * progress)))
     return LambdaLR(optimizer, lr_lambda)
     
+
 @torch.no_grad()
 def eval(vector_info, model, steering_vectors, adapter, device, cfg, max_evals=3):
     c_crit = "Text is coherent, the grammar is correct."
@@ -116,8 +120,6 @@ def eval(vector_info, model, steering_vectors, adapter, device, cfg, max_evals=3
 
         if i == max_evals:
             break
-
-
 
 
 def dpo_loss(pi_winner_logprobs, pi_loser_logprobs, ref_winner_logprobs, ref_loser_logprobs, beta=0.1):
@@ -187,6 +189,8 @@ def train(model, steering_vectors, adapter, dataloader, device, cfg):
         optimizer.step()
         optimizer.zero_grad()
 
+        scheduler.step()
+
         loss_sum += loss.item()
 
         if step % 10 == 0:
@@ -203,6 +207,7 @@ def train(model, steering_vectors, adapter, dataloader, device, cfg):
             wandb.log({
                 "avg_loss_last_100": avg_loss,
                 "step": step,
+                "learning_rate": scheduler.get_last_lr()[0],
             })
             loss_sum = 0  # Reset the sum after logging
         
@@ -211,8 +216,6 @@ def train(model, steering_vectors, adapter, dataloader, device, cfg):
             eval(vector_info, model, steering_vectors, adapter, device, cfg)
 
     wandb.finish()
-
-
 
 
 if __name__ == '__main__':
@@ -228,6 +231,9 @@ if __name__ == '__main__':
     }
     dataset = Comparisons('comparison_data')
     dataloader = DataLoader(dataset, batch_size=train_cfg['batch_size'], shuffle=True)
+
+    # Initialize wandb
+    wandb.init(project="steering-adapter", config=train_cfg)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = HookedTransformer.from_pretrained(train_cfg['model'], device=device)
@@ -258,9 +264,6 @@ if __name__ == '__main__':
                       do_relu=train_cfg['do_relu'],
                       )
     adapter.to(device)
-
-    # Initialize wandb
-    wandb.init(project="steering-adapter", config=train_cfg)
 
     model.to(torch.float16)
     train(model, steering_vectors, adapter, dataloader, device, train_cfg)
