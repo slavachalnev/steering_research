@@ -66,6 +66,20 @@ class Adapter(torch.nn.Module):
         return x_h + x * self.scale
 
 
+class AdapterFull(torch.nn.Module):
+    def __init__(self, input_size):
+        super(AdapterFull, self).__init__()
+        self.W = torch.nn.Parameter(torch.nn.init.kaiming_uniform_(torch.empty(input_size, input_size)))
+        self.b_out = torch.nn.Parameter(torch.zeros(input_size))
+        self.scale = torch.nn.Parameter(torch.ones(1))
+
+    def forward(self, x):
+        # takes in a batch of steering vectors
+        # x shape is (batch_size, d_model)
+        x_h = x @ self.W + self.b_out
+        return x_h + x * self.scale
+
+
 def get_lr_scheduler(optimizer, warmup_steps, total_steps):
     def lr_lambda(current_step: int):
         if current_step < warmup_steps:
@@ -80,7 +94,6 @@ def eval(vector_info, model, steering_vectors, adapter, max_evals=3):
     c_crit = "Text is coherent, the grammar is correct."
     for i, d in enumerate(vector_info):
         vec = steering_vectors[i]
-        # vec = vec * cfg['base_scale']
         vec = vec.to(device)
 
         if adapter is not None:
@@ -89,49 +102,54 @@ def eval(vector_info, model, steering_vectors, adapter, max_evals=3):
             adapted_vec = vec
 
         hooks = [("blocks.6.hook_resid_post", partial(patch_resid, steering=adapted_vec))]
-        with model.hooks(fwd_hooks=hooks):
-            texts = generate(
-                model,
-                hooks,
-                prompt="I think",
-                n_samples=128,
-                batch_size=64,
-                max_new_tokens=29,
-            )
-            print(f'rating {d["ft_desc"]}')
-            print(texts[:5])
+        texts = generate(
+            model,
+            hooks,
+            prompt="I think",
+            n_samples=128,
+            batch_size=64,
+            max_new_tokens=29,
+        )
+        print(f'rating {d["ft_desc"]}')
+        print(texts[:5])
 
-            coherence, score = multi_criterion_evaluation(
-                texts,
-                [c_crit, d['eval_criterion']],
-                prompt="I think",
-            )
+        coherence, score = multi_criterion_evaluation(
+            texts,
+            [c_crit, d['eval_criterion']],
+            prompt="I think",
+        )
 
-            coherence = [e['score'] for e in coherence]
-            score = [e['score'] for e in score]
+        coherence = [e['score'] for e in coherence]
+        score = [e['score'] for e in score]
 
-            coherence = sum(coherence) / len(coherence)
-            score = sum(score) / len(score)
-            print(f"Vector {i}, coherence: {coherence}, score: {score}")
+        coherence = sum(coherence) / len(coherence)
+        score = sum(score) / len(score)
+        print(f"Vector {i}, coherence: {coherence}, score: {score}")
 
-            # log to wandb
-            wandb.log({
-                f"coherence_{d['ft_desc']}": coherence,
-                f"score_{d['ft_desc']}": score,
-                f"samples_{d['ft_desc']}": wandb.Table(columns=["Text"], data=[[t] for t in texts[:5]]),
-            })
+        # log to wandb
+        wandb.log({
+            f"coherence_{d['ft_desc']}": coherence,
+            f"score_{d['ft_desc']}": score,
+            f"samples_{d['ft_desc']}": wandb.Table(columns=["Text"], data=[[t] for t in texts[:5]]),
+        })
 
         if i == max_evals:
             break
 
 
 def dpo_loss(pi_winner_logprobs, pi_loser_logprobs, ref_winner_logprobs, ref_loser_logprobs, beta=0.1):
+        # convert to float32
+        pi_winner_logprobs = pi_winner_logprobs.to(torch.float32)
+        pi_loser_logprobs = pi_loser_logprobs.to(torch.float32)
+        ref_winner_logprobs = ref_winner_logprobs.to(torch.float32)
+        ref_loser_logprobs = ref_loser_logprobs.to(torch.float32)
+
         # Compute log ratios
         pi_logratios = pi_winner_logprobs - pi_loser_logprobs
         ref_logratios = ref_winner_logprobs - ref_loser_logprobs
 
         losses = -F.logsigmoid(beta * (pi_logratios - ref_logratios))
-        return losses
+        return losses.mean()
 
 
 def train(model, steering_vectors, adapter, dataloader, device, cfg):
@@ -139,7 +157,7 @@ def train(model, steering_vectors, adapter, dataloader, device, cfg):
     model.to(device)
     model.train()
 
-    optimizer = torch.optim.Adam(adapter.parameters(), lr=cfg['lr'])
+    optimizer = torch.optim.AdamW(adapter.parameters(), lr=cfg['lr'])
 
     scheduler = get_lr_scheduler(optimizer, 500, cfg['total_steps'])
 
@@ -186,7 +204,7 @@ def train(model, steering_vectors, adapter, dataloader, device, cfg):
             ref_winner_logprobs,
             ref_loser_logprobs,
             beta=cfg['beta'],
-        ).mean()
+        )
 
         loss.backward()
         optimizer.step()
@@ -229,7 +247,7 @@ def train(model, steering_vectors, adapter, dataloader, device, cfg):
 if __name__ == '__main__':
     train_cfg = {
         'batch_size': 8,
-        'total_steps': int(2e4),
+        'total_steps': int(3e4),
         'lr': 1e-3,
         'beta': 0.1,
         'model': 'gemma-2b',
@@ -270,6 +288,7 @@ if __name__ == '__main__':
                       hidden_size=train_cfg['adapter_hidden_size'],
                       do_relu=train_cfg['do_relu'],
                       )
+    # adapter = AdapterFull(steering_vectors.shape[1])
     adapter.to(device)
 
     # no grad for first 5 layers
