@@ -1,3 +1,244 @@
+.row {
+    display: flex;
+    flex-direction: row;
+    /* flex-wrap: wrap; */
+}
+
+.column {
+    display:flex;
+    flex-direction: column;
+    width:100%;
+}
+
+.wrap {
+    flex-wrap: wrap;
+    /* word-wrap: break-word; 
+    word-break: break-all;  */
+}
+
+.neuron-history {   
+    /* height: 40px; */
+    border-bottom: 2px solid #e9ecef;
+    overflow-x: scroll;
+    position: relative;
+}
+
+.neuron-history::-webkit-scrollbar {
+    display: none;  /* WebKit */
+}
+
+.neuron-history > div {
+    min-width: 250px;
+    padding:10px;
+    border-right: 1px solid #e9ecef;
+    cursor: pointer;
+    user-select: none;
+}
+
+.neuron-history > div:hover {
+    background-color: #b8b8b880;
+}
+
+.scroll-left-button {
+    position: fixed;
+    left: 9px;
+    top: 9px;
+    width: 40px;
+    height: 40px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    border: 2px solid #007bff;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.scroll-left-button:hover {
+    background-color: #007bff;
+    transform: scale(1.05);
+}
+
+.scroll-left-button::before {
+    content: "◀";
+    color: #007bff;
+    font-size: 18px;
+}
+
+.scroll-left-button:hover::before {
+    color: white;
+}
+
+/* Neuron Bar */
+
+.neuron-view {
+    height: 250px;
+    display: flex;
+    gap: 20px;
+    border-bottom: 2px solid #e9ecef;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.neuron-bar {
+    width: 20vw;
+    min-width: 300px;
+    max-width: 300px;
+    padding: 20px;
+}
+
+.neuron-bar:first-child {
+    border-right: 2px solid #e9ecef;
+}
+
+.neuron-bar:not(:first-child) {
+    background-color: #ffffff;
+}
+
+.neuron-bar h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+    padding-bottom: 5px;
+}
+
+.neuron-bar .input-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.neuron-bar input[type="number"] {
+    flex-grow: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.neuron-bar button {
+    margin-left: 10px;
+    padding: 8px 12px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.neuron-bar button:hover {
+    background-color: #0056b3;
+}
+
+.neuron-bar input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.related-neurons {
+    margin-right: 10px;
+    margin-bottom: 5px;
+    cursor: pointer;
+}
+
+.related-neurons:hover {
+    text-decoration: underline;
+}
+
+/* Feature View */
+
+.feature-title { 
+    font-size: 20px;
+    /* font-weight: bold; */
+    width: 100%;
+    margin: 0px 00px;
+}
+
+.feature-dampened {
+    font-size: 15px;
+    font-weight: bold;
+    margin-top: 15px;
+    color: lightgrey;
+}
+
+.feature-view {
+    background-color: #f3f3f3;
+    margin: 20px 20px;
+    padding: 20px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: row;
+}
+
+.feature-column {
+    flex: 1;
+    padding: 0 10px;
+}
+
+.feature-column:first-child {
+    padding-left: 0;
+}
+
+.feature-column:last-child {
+    padding-right: 0;
+}
+
+.feature-details {
+    width: 100%;
+    /* margin: 30px 0; */
+    margin:0px;
+    display: flex;
+    flex-direction: row;
+}
+
+.feature-rows:first-child {
+    padding: 0px;
+}
+
+.feature-details-row {
+    /* margin-top: 10px; */
+    position: relative;
+    overflow: visible;
+    padding: 30px 0 0 0;
+}
+
+.feature-bar {
+    background-color: #e0e0e0;
+    border: 1px solid #bdbdbd;
+    color: #333;
+    padding: 8px 12px;
+    text-align: right;
+    min-width: 60px;
+    height: 60px;
+    cursor: pointer;
+    border-radius: 4px;
+    /* box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); */
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    font-weight: 600;
+}
+
+.feature-bar:hover {
+    background-color: #d0d0d0;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    /* transform: translateY(-2px); */
+}
+
+.related-feature {
+    color: rgb(223, 49, 49);
+    padding: 5px;
+    margin: 2px 0;
+    text-align: right;
+}
+
+
+/* Old */
+
 .iframe-container {
   position: fixed;
   bottom: 20px;
@@ -15,4 +256,5 @@
   width: 100%;
   height: 100%;
   border: none;
+
 }

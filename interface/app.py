@@ -38,6 +38,8 @@ def send_request():
     response = requests.post(url, headers=headers, json=data)
     response_data = response.json()
 
+    print(response_data)
+
     # Extract the prediction ID for polling
     prediction_id = response_data["id"]
     status = response_data["status"]
@@ -113,6 +115,7 @@ def predict():
 
     return response
 
+
 @app.route("/get-neuron/<int:number>", methods=["OPTIONS"])
 def handle_data_options():
     response = app.make_default_options_response()
@@ -120,6 +123,7 @@ def handle_data_options():
     response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return response
+
 
 @app.route("/get-neuron/<int:number>", methods=["GET"])
 def fetch_data(number):
@@ -139,12 +143,14 @@ def fetch_data(number):
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-    
+
     return response
 
+
 # Load the JSON data from the file
-with open('./autointerp.json', 'r') as file:
+with open("./autointerp.json", "r") as file:
     data = json.load(file)
+
 
 def search_features(search_term):
     results = []
@@ -153,7 +159,8 @@ def search_features(search_term):
             results.append(item)
     return results
 
-@app.route('/search', methods=['OPTIONS'])
+
+@app.route("/search", methods=["OPTIONS"])
 def handle_search_options():
     response = app.make_default_options_response()
     response.headers["Access-Control-Allow-Origin"] = "*"
@@ -161,7 +168,8 @@ def handle_search_options():
     response.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return response
 
-@app.route('/search/<string:search_term>', methods=['GET'])
+
+@app.route("/search/<string:search_term>", methods=["GET"])
 def search(search_term):
     if not search_term:
         response = jsonify({"error": "No search term provided"}), 400
@@ -173,8 +181,9 @@ def search(search_term):
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-    
+
     return response
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
