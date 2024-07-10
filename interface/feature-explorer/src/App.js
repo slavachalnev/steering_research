@@ -20,6 +20,7 @@ function App() {
 
 	const [searchQuery, setSearchQuery] = useState("");
 	const [searchResults, setSearchResults] = useState([]);
+	const [isSearchFocused, setIsSearchFocused] = useState(false);
 
 	// Add this new ref
 	const featureViewContainerRef = useRef(null);
@@ -139,12 +140,12 @@ function App() {
 		}
 	}, [featureNumber]);
 
-	const updateRow = async (feature, ref, rowIndex) => {
+	const updateRow = async (feature, ref, rowIndex, shouldSlice) => {
 		let newRows = [...feature.rows];
 
-		if (newRows[rowIndex] && newRows[rowIndex].ref === ref) {
+		if (shouldSlice) {
 			// Remove this row and all subsequent rows
-			newRows = newRows.slice(0, rowIndex);
+			newRows = newRows.slice(0, rowIndex + 1);
 		} else {
 			// Fetch new data and add it to the rows
 			const data = await fetchData(ref.getAttribute("feature-number"));
@@ -221,11 +222,19 @@ function App() {
 							type="text"
 							placeholder="Search by description"
 							value={searchQuery}
-							onFocus={() => fetchSearchResults(searchQuery, setSearchResults)}
-							onBlur={() => setTimeout(() => setSearchResults([]), 100)}
+							onFocus={() => {
+								fetchSearchResults(searchQuery, setSearchResults);
+								setIsSearchFocused(true);
+							}}
+							onBlur={() => {
+								setTimeout(() => {
+									setIsSearchFocused(false);
+									setSearchResults([]);
+								}, 100);
+							}}
 							onChange={(e) => setSearchQuery(e.target.value)}
 						/>
-						{searchResults.length > 0 && (
+						{isSearchFocused && searchResults.length > 0 && (
 							<div className="search-results">
 								{searchResults.map((result, index) => (
 									<div

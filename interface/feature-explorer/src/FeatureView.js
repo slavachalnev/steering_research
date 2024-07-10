@@ -24,8 +24,8 @@ const FeatureDetailsRow = ({
 }) => {
 	const rowRef = useRef();
 	const barRefs = useRef([]);
-	const updatedIndices = row.indices.slice(1);
-	const normalizedValues = normalizeValues(row.values.slice(1));
+	const updatedIndices = row.indices;
+	const normalizedValues = normalizeValues(row.values);
 	const descriptions = row.descriptions.slice(1);
 	const [svgPath, setSvgPath] = useState(null);
 	const color = "rgba(0, 50, 200, 0.3)";
@@ -66,6 +66,7 @@ const FeatureDetailsRow = ({
 	}, [previousBarRef, rowRef, row]);
 
 	const handleBarClick = (barRef, barIndex) => {
+		console.log(barRef);
 		handleRowUpdate(barRef, index);
 		// setFeatureNumber(updatedIndices[barIndex]);
 	};
@@ -118,12 +119,18 @@ export function NewFeatureDetails({ feature, updateRow, setFeatureNumber }) {
 	const [barRefs, setBarRefs] = useState([]);
 
 	const handleRowUpdate = (ref, rowIndex) => {
-		updateRow(feature, ref, rowIndex);
-		setBarRefs((prevRefs) => {
-			const newRefs = [...prevRefs];
-			newRefs[rowIndex] = ref;
-			return newRefs;
-		});
+		if (barRefs[rowIndex] === ref) {
+			// If the clicked bar is the same as the stored one, slice all later rows
+			setBarRefs((prevRefs) => prevRefs.slice(0, rowIndex));
+			updateRow(feature, ref, rowIndex, true); // Pass true to indicate slicing
+		} else {
+			updateRow(feature, ref, rowIndex, false);
+			setBarRefs((prevRefs) => {
+				const newRefs = [...prevRefs];
+				newRefs[rowIndex] = ref;
+				return newRefs;
+			});
+		}
 	};
 
 	// Check if feature.rows exists and is an array before mapping
