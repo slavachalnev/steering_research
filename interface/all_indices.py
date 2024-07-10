@@ -6,8 +6,6 @@ app = Flask(__name__)
 
 # Load all tensors
 try:
-    tensor_data_indices = torch.load("all_indices.pt", map_location=torch.device("cpu"))
-    tensor_data_values = torch.load("all_values.pt", map_location=torch.device("cpu"))
     cos_sim_indices = torch.load(
         "cosine_sim_indices.pt", map_location=torch.device("cpu")
     )
@@ -51,21 +49,13 @@ def handle_get_data_options():
 @app.route("/get_data", methods=["GET"])
 def get_data():
     index = request.args.get("index", type=int)
-    data_type = request.args.get("type", type=str)
+    print(index)
 
-    if index is None or data_type is None:
+    if index is None:
         return jsonify({"error": "Missing parameters"}), 400
 
-    if data_type == "tensor":
-        indices = tensor_data_indices[index].tolist()
-        values = tensor_data_values[index].tolist()
-    elif data_type == "cosine":
-        indices = cos_sim_indices[index].tolist()
-        values = cos_sim_values[index].tolist()
-    else:
-        return jsonify({"error": "Invalid data type"}), 400
-
-    # normalized_values = normalize_values(values)
+    indices = cos_sim_indices[index].tolist()
+    values = cos_sim_values[index].tolist()
 
     response = jsonify({"indices": indices, "values": values})
 
@@ -81,24 +71,72 @@ def get_data():
 def handle_get_description_options():
     response = app.make_default_options_response()
     response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
+
+@app.route("/get_description", methods=["POST"])
+def get_description():
+    data = request.get_json()
+
+    if not data or "keys" not in data or not isinstance(data["keys"], list):
+        return (
+            jsonify(
+                {"error": "Invalid request. Expected a JSON object with a 'keys' list."}
+            ),
+            400,
+        )
+
+    keys = data["keys"]
+    descriptions = {}
+
+    for key in keys:
+        description = autointerp_data.get(str(key))
+        if description is not None:
+            descriptions[key] = description
+
+    response = jsonify({"descriptions": descriptions})
+
+    # Add CORS headers to the response
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+
+    return response
+
+
+# Load the JSON data from the file
+with open("./autointerp.json", "r") as file:
+    data = json.load(file)
+
+
+def search_features(search_term):
+    results = []
+    for i, item in enumerate(data):
+        if search_term.lower() in item[0].lower():
+            results.append(item)
+    return results
+
+
+@app.route("/search", methods=["OPTIONS"])
+def handle_search_options():
+    response = app.make_default_options_response()
+    response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return response
 
 
-@app.route("/get_description", methods=["GET"])
-def get_description():
-    key = request.args.get("key", type=str)
+@app.route("/search/<string:search_term>", methods=["GET"])
+def search(search_term):
+    if not search_term:
+        response = jsonify({"error": "No search term provided"}), 400
+    else:
+        results = search_features(search_term)
+        response = jsonify(results)
 
-    if key is None:
-        return jsonify({"error": "Missing key parameter"}), 400
-
-    description = autointerp_data.get(key)
-
-    if description is None:
-        return jsonify({"error": "Invalid key"}), 400
-
-    response = jsonify({"key": key, "description": description})
+    print(response)
 
     # Add CORS headers to the response
     response.headers["Access-Control-Allow-Origin"] = "*"

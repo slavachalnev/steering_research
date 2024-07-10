@@ -1,19 +1,36 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./App.css";
-import FeatureView from "./FeatureView";
-import { fetchData } from "./utils";
+import FeatureView, { NewFeatureDetails, FeatureLink } from "./FeatureView";
+import { fetchData, fetchDescriptions, fetchSearchResults } from "./utils";
 
 function App() {
-	const iframeRef = useRef();
-	const [value, setValue] = useState(0);
+	// History bar
+	const historyRef = useRef(null);
 	const [history, setHistory] = useState([]);
-	const [featureNumber, setFeatureNumber] = useState(0);
-	const [features, setFeatures] = useState([10138]);
+	const [showScrollButton, setShowScrollButton] = useState(false);
+
+	// Top bar state
+	const iframeRef = useRef();
+	const [value, setValue] = useState();
+	const [featureNumber, setFeatureNumber] = useState(null);
 	const [featureDescription, setFeatureDescription] = useState("");
 	const [similar, setSimilar] = useState(null);
 
-	const historyRef = useRef(null);
-	const [showScrollButton, setShowScrollButton] = useState(false);
+	const [newFeatures, setNewFeatures] = useState([]);
+
+	const [searchQuery, setSearchQuery] = useState("");
+	const [searchResults, setSearchResults] = useState([]);
+
+	// Add this new ref
+	const featureViewContainerRef = useRef(null);
+
+	useEffect(() => {
+		if (featureNumber) setValue(featureNumber);
+	}, [featureNumber]);
+
+	useEffect(() => {
+		console.log(newFeatures);
+	}, [newFeatures]);
 
 	useEffect(() => {
 		const handleScroll = () => {
@@ -41,43 +58,126 @@ function App() {
 	};
 
 	const fetchDescription = async (featureNumber) => {
-		try {
-			const response = await fetch(
-				`http://localhost:5000/get_description?key=${featureNumber}`
-			);
-			if (!response.ok) {
-				throw new Error("Failed to fetch description");
-			}
-			const data = await response.json();
-			setFeatureDescription(data.description);
-			setHistory([
-				...history.filter((item) => item.feature !== featureNumber),
-				{ feature: featureNumber, description: data.description },
-			]);
-		} catch (error) {
-			console.error("Error fetching description:", error);
+		const data = await fetchDescriptions([featureNumber]);
+		if (data[featureNumber]) {
+			setFeatureDescription(data[featureNumber]);
+		} else {
 			setFeatureDescription("");
-			setHistory([
-				...history.filter((item) => item.feature !== featureNumber),
-				{ feature: featureNumber, description: "" },
-			]);
 		}
+		setHistory([
+			...history.filter((item) => item.feature !== featureNumber),
+			{
+				feature: featureNumber,
+				description: data[featureNumber] ? data[featureNumber] : "",
+			},
+		]);
 		scrollToStart();
 	};
 
-	const getData = async (feature) => {
+	const getSimilar = async (feature) => {
 		const data = await fetchData(feature);
 		setSimilar(data);
 	};
 
-	useEffect(() => {
-		fetchDescription(featureNumber);
-		getData(featureNumber);
-	}, [featureNumber]);
+	const getData = async (feature) => {
+		const data = await fetchData(feature);
+		const description = await fetchDescriptions([feature]);
+
+		// Fetch descriptions for all indices
+		const descriptions = await fetchDescriptions(data.indices);
+		const orderedDescriptions = data.indices.map(
+			(index) => descriptions[index] || ""
+		);
+
+		let dataset = {
+			indices: data.indices.slice(1),
+			values: data.values.slice(1),
+			descriptions: orderedDescriptions.slice(1),
+		};
+
+		let newFeature = {
+			feature,
+			description: description[feature],
+			rows: [dataset],
+		};
+
+		setNewFeatures((prevFeatures) => {
+			// Check if the feature already exists
+			const existingIndex = prevFeatures.findIndex(
+				(f) => f.feature === feature
+			);
+
+			if (existingIndex !== -1) {
+				// If it exists, remove it from its current position
+				const updatedFeatures = prevFeatures.filter(
+					(f) => f.feature !== feature
+				);
+				// Add the updated feature to the beginning of the array
+				return [newFeature, ...updatedFeatures];
+			} else {
+				// If it doesn't exist, add it to the beginning of the array
+				return [newFeature, ...prevFeatures];
+			}
+		});
+
+		// Scroll to top of featureViewContainerRef after state update
+		setTimeout(() => {
+			if (featureViewContainerRef.current) {
+				const containerTop = featureViewContainerRef.current.offsetTop;
+				window.scrollTo({
+					top: containerTop,
+					behavior: "smooth",
+				});
+			}
+		}, 20);
+	};
 
 	useEffect(() => {
-		console.log(features);
-	}, [features]);
+		if (featureNumber) {
+			fetchDescription(featureNumber);
+			getSimilar(featureNumber);
+		}
+	}, [featureNumber]);
+
+	const updateRow = async (feature, ref, rowIndex) => {
+		let newRows = [...feature.rows];
+
+		if (newRows[rowIndex] && newRows[rowIndex].ref === ref) {
+			// Remove this row and all subsequent rows
+			newRows = newRows.slice(0, rowIndex);
+		} else {
+			// Fetch new data and add it to the rows
+			const data = await fetchData(ref.getAttribute("feature-number"));
+			const descriptions = await fetchDescriptions(data.indices);
+
+			// Create an ordered array of descriptions
+			const orderedDescriptions = data.indices.map(
+				(index) => descriptions[index] || ""
+			);
+
+			let dataset = {
+				indices: data.indices.slice(1),
+				values: data.values.slice(1),
+				descriptions: orderedDescriptions.slice(1),
+				ref: ref, // Store the ref in the dataset
+			};
+			newRows = [...newRows.slice(0, rowIndex + 1), dataset];
+		}
+
+		setNewFeatures((prevFeatures) =>
+			prevFeatures.map((f) =>
+				f.feature === feature.feature ? { ...f, rows: newRows } : f
+			)
+		);
+	};
+
+	useEffect(() => {
+		const delayDebounceFn = setTimeout(async () => {
+			await fetchSearchResults(searchQuery, setSearchResults);
+		}, 300); // Debounce delay
+
+		return () => clearTimeout(delayDebounceFn);
+	}, [searchQuery]);
 
 	return (
 		<div className="App">
@@ -116,76 +216,103 @@ function App() {
 					<div>
 						<input
 							style={{
-								width: "100%",
+								width: "calc(100% - 16px)",
 							}}
 							type="text"
 							placeholder="Search by description"
+							value={searchQuery}
+							onFocus={() => fetchSearchResults(searchQuery, setSearchResults)}
+							onBlur={() => setTimeout(() => setSearchResults([]), 100)}
+							onChange={(e) => setSearchQuery(e.target.value)}
 						/>
+						{searchResults.length > 0 && (
+							<div className="search-results">
+								{searchResults.map((result, index) => (
+									<div
+										key={index}
+										className="search-result-item"
+										onMouseDown={() => {
+											setFeatureNumber(result[1]);
+											setSearchResults([]);
+										}}
+									>
+										<span className="result-number">{result[1]}</span>
+										<div className="result-description">{result[0]}</div>
+									</div>
+								))}
+							</div>
+						)}
 					</div>
 				</div>
-				<div className="neuron-bar row">
-					<div className="columm">
-						<div className="row">
-							<h3>Feature {featureNumber}</h3>
+				{featureNumber && (
+					<>
+						<div className="neuron-bar row">
+							<div className="column">
+								<h3>Feature {featureNumber}</h3>
+								<p>{featureDescription}</p>
+								<div style={{ color: "gray" }}>
+									<i>Related features</i>
+								</div>
+								<div className="row wrap">
+									{similar &&
+										similar.indices.slice(1).map((index) => {
+											return (
+												<div
+													onClick={(ev) => setFeatureNumber(index)}
+													className="related-neurons"
+												>
+													{index}
+												</div>
+											);
+										})}
+								</div>
+							</div>
 							<button
-								onClick={() => setFeatures((prev) => [...prev, featureNumber])}
+								className="add-feature-button"
+								onClick={() => {
+									getData(featureNumber);
+								}}
 							>
-								Add to Features
+								Inspect feature
+								<span className="down-arrow">→</span>
 							</button>
 						</div>
-						<p>{featureDescription}</p>
-						<div
-							style={{
-								color: "gray",
-							}}
-						>
-							Related features
-						</div>
-						<div className="row wrap">
-							{similar &&
-								similar.indices.slice(1).map((index) => {
-									return (
-										<div
-											onClick={(ev) => setFeatureNumber(index)}
-											className="related-neurons"
-										>
-											{index}
-										</div>
-									);
-								})}
-						</div>
-					</div>
-				</div>
-				<iframe
-					ref={iframeRef}
-					src={
-						"https://neuronpedia.org/gemma-2b/6-res-jb/" +
-						featureNumber +
-						"?embed=true"
-					}
-					title="Neuronpedia"
-					className="neuronpedia-iframe"
-				></iframe>
+						<iframe
+							ref={iframeRef}
+							src={
+								"https://neuronpedia.org/gemma-2b/6-res-jb/" +
+								featureNumber +
+								"?embed=true"
+							}
+							title="Neuronpedia"
+							className="neuronpedia-iframe"
+						></iframe>
+					</>
+				)}
 			</div>
-			{/* <div className="iframe-container">
-				<h2>Feature {featureNumber}</h2>
-				<iframe
-					ref={iframeRef}
-					src={
-						"https://neuronpedia.org/gemma-2b/6-res-jb/" +
-						featureNumber +
-						"?embed=true"
-					}
-					title="Neuronpedia"
-					className="neuronpedia-iframe"
-				></iframe>
-			</div> */}
-			{[...features].reverse().map((feature) => {
-				console.log(feature);
-				return (
-					<FeatureView feature={feature} setFeatureNumber={setFeatureNumber} />
-				);
-			})}
+			<div className="feature-view-container" ref={featureViewContainerRef}>
+				{newFeatures.map((feature, i) => {
+					return (
+						<div className="feature-view row" key={feature.feature}>
+							<div className="column">
+								<div className="row">
+									<h3 className="feature-title">Feature {feature.feature}</h3>
+									<FeatureLink
+										featureNumber={feature.feature}
+										setFeatureNumber={setFeatureNumber}
+									/>
+								</div>
+								<div>{feature.description}</div>
+								<NewFeatureDetails
+									feature={feature}
+									updateRow={updateRow}
+									setFeatureNumber={setFeatureNumber}
+								/>
+							</div>
+						</div>
+					);
+				})}
+			</div>
 		</div>
 	);
 }

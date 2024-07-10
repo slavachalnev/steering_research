@@ -1,31 +1,38 @@
 import React, { useEffect, useState, useRef } from "react";
-import { fetchData } from "./utils";
 
 const normalizeValues = (values) => {
 	const sum = values.reduce((acc, val) => acc + val, 0);
 	return values.map((val) => val / sum);
 };
 
+export const FeatureLink = ({ featureNumber, setFeatureNumber }) => (
+	<span
+		className="feature-link"
+		onClick={() => setFeatureNumber(featureNumber)}
+		title={`Set to feature ${featureNumber}`}
+	>
+		<span className="feature-link-icon">🔍</span>
+	</span>
+);
+
 const FeatureDetailsRow = ({
-	values,
-	indices,
+	row,
 	index,
-	handleRows,
-	barRef,
+	handleRowUpdate,
+	previousBarRef,
 	setFeatureNumber,
 }) => {
 	const rowRef = useRef();
 	const barRefs = useRef([]);
-	const updatedIndices = indices.slice(1);
-	const normalizedValues = normalizeValues(values.slice(1));
+	const updatedIndices = row.indices.slice(1);
+	const normalizedValues = normalizeValues(row.values.slice(1));
+	const descriptions = row.descriptions.slice(1);
 	const [svgPath, setSvgPath] = useState(null);
 	const color = "rgba(0, 50, 200, 0.3)";
-	const greyHover = "rgb(175, 175, 175)";
-	const blueHover = "rgb(0, 50, 200, .6)";
 
-	useEffect(() => {
-		if (barRef && rowRef.current) {
-			const barRect = barRef.getBoundingClientRect();
+	const updateSvgPath = () => {
+		if (previousBarRef && rowRef.current) {
+			const barRect = previousBarRef.getBoundingClientRect();
 			const rowRect = rowRef.current.getBoundingClientRect();
 			const svgRect = rowRef.current.parentElement.getBoundingClientRect();
 
@@ -41,30 +48,29 @@ const FeatureDetailsRow = ({
 			const midY = (startY + endY) / 2;
 
 			const path = `
-            M ${startLeft},${startY}
-            C ${startLeft},${midY} ${endLeft},${midY} ${endLeft},${endY}
-            L ${endRight},${endY}
-            C ${endRight},${midY} ${startRight},${midY} ${startRight},${startY}
-            Z
-          `;
+				M ${startLeft},${startY}
+				C ${startLeft},${midY} ${endLeft},${midY} ${endLeft},${endY}
+				L ${endRight},${endY}
+				C ${endRight},${midY} ${startRight},${midY} ${startRight},${startY}
+				Z
+			`;
 
 			setSvgPath(path);
 		}
-	}, [barRef, rowRef, values, indices]);
+	};
 
 	useEffect(() => {
-		// Set color on mount
-		if (barRef) {
-			barRef.style.backgroundColor = color;
-		}
+		updateSvgPath();
+		window.addEventListener("resize", updateSvgPath);
+		return () => window.removeEventListener("resize", updateSvgPath);
+	}, [previousBarRef, rowRef, row]);
 
-		// Remove color on dismount
-		return () => {
-			if (barRef) {
-				barRef.style.backgroundColor = "";
-			}
-		};
-	}, [barRef]);
+	const handleBarClick = (barRef, barIndex) => {
+		handleRowUpdate(barRef, index);
+		// setFeatureNumber(updatedIndices[barIndex]);
+	};
+
+	if (!row) return null;
 
 	return (
 		<div className="feature-details-row">
@@ -91,16 +97,15 @@ const FeatureDetailsRow = ({
 							style={{
 								width: `${value * 100}%`,
 							}}
+							feature-number={updatedIndices[i]}
 							className="feature-bar"
-							// onDoubleClick={(ev) => {
-							// 	handleRows(updatedIndices[i], barRefs.current[i], index, i);
-							// }}
-							onClick={(ev) => {
-								// setFeatureNumber(updatedIndices[i]);
-								handleRows(updatedIndices[i], barRefs.current[i], index, i);
-							}}
+							onClick={() => handleBarClick(barRefs.current[i], i)}
+							onDoubleClick={() => setFeatureNumber(updatedIndices[i])}
 						>
-							{updatedIndices[i]}
+							<span className="feature-bar-index row">{updatedIndices[i]}</span>
+							<span className="feature-bar-description" title={descriptions[i]}>
+								{descriptions[i]}
+							</span>
 						</div>
 					);
 				})}
@@ -109,86 +114,117 @@ const FeatureDetailsRow = ({
 	);
 };
 
-const FeatureDetails = ({ data, setFeatureNumber }) => {
-	const [rows, setRows] = useState([data]);
-	const [barRefs, setBarRefs] = useState([null]);
+export function NewFeatureDetails({ feature, updateRow, setFeatureNumber }) {
+	const [barRefs, setBarRefs] = useState([]);
 
-	useEffect(() => {
-		console.log("rows:");
-		console.log(rows);
-	}, [rows]);
-
-	const handleRows = async (feature, ref, rowIndex) => {
-		if (!rows) return;
-		if (barRefs.includes(ref)) {
-			const index = barRefs.indexOf(ref);
-			setBarRefs([...barRefs.slice(0, index)]);
-			setRows([...rows.slice(0, index)]);
-		} else {
-			const data = await fetchData(feature);
-			setBarRefs([...barRefs.slice(0, rowIndex + 1), ref]);
-			setRows([...rows.slice(0, rowIndex + 1), data]);
-		}
+	const handleRowUpdate = (ref, rowIndex) => {
+		updateRow(feature, ref, rowIndex);
+		setBarRefs((prevRefs) => {
+			const newRefs = [...prevRefs];
+			newRefs[rowIndex] = ref;
+			return newRefs;
+		});
 	};
 
-	if (!data) {
-		return <div>Loading...</div>;
-	}
+	// Check if feature.rows exists and is an array before mapping
+	const rows = feature.rows && Array.isArray(feature.rows) ? feature.rows : [];
 
 	return (
-		<div className="feature-rows">
-			{rows.map((row, i) => (
+		<div>
+			{rows.map((row, rowIndex) => (
 				<FeatureDetailsRow
-					values={row.values}
-					indices={row.indices}
-					handleRows={handleRows}
-					barRef={barRefs[i]}
-					index={i}
+					key={rowIndex}
+					row={row}
+					index={rowIndex}
+					handleRowUpdate={handleRowUpdate}
+					previousBarRef={rowIndex > 0 ? barRefs[rowIndex - 1] : null}
 					setFeatureNumber={setFeatureNumber}
 				/>
 			))}
 		</div>
 	);
-};
+}
 
-const FeatureView = ({ feature, setFeatureNumber }) => {
-	const [data, setData] = useState(null);
+// const FeatureDetails = ({ data, setFeatureNumber }) => {
+// 	const [rows, setRows] = useState([data]);
+// 	const [barRefs, setBarRefs] = useState([null]);
 
-	const getData = async (feature) => {
-		console.log("Fetching data for feature:", feature);
-		const fetchedData = await fetchData(feature);
-		setData(fetchedData);
-	};
+// 	useEffect(() => {
+// 		console.log("rows:");
+// 		console.log(rows);
+// 	}, [rows]);
 
-	useEffect(() => {
-		getData(feature);
-	}, []);
+// 	const handleRows = async (feature, ref, rowIndex) => {
+// 		if (!rows) return;
+// 		if (barRefs.includes(ref)) {
+// 			const index = barRefs.indexOf(ref);
+// 			setBarRefs([...barRefs.slice(0, index)]);
+// 			setRows([...rows.slice(0, index)]);
+// 		} else {
+// 			const data = await fetchData(feature);
+// 			setBarRefs([...barRefs.slice(0, rowIndex + 1), ref]);
+// 			setRows([...rows.slice(0, rowIndex + 1), data]);
+// 		}
+// 	};
 
-	useEffect(() => {
-		getData(feature);
-	}, [feature]);
+// 	if (!data) {
+// 		return <div>Loading...</div>;
+// 	}
 
-	useEffect(() => {
-		if (data) {
-			console.log(feature);
-			console.log("Data updated:", data);
-			console.log("Values:", data.values);
-			console.log("Indices:", data.indices);
-		}
-	}, [data]);
+// 	return (
+// 		<div className="feature-rows">
+// 			{rows.map((row, i) => (
+// 				<FeatureDetailsRow
+// 					values={row.values}
+// 					indices={row.indices}
+// 					handleRows={handleRows}
+// 					barRef={barRefs[i]}
+// 					index={i}
+// 					setFeatureNumber={setFeatureNumber}
+// 				/>
+// 			))}
+// 		</div>
+// 	);
+// };
 
-	return (
-		<div className="feature-view row">
-			{data ? (
-				<div className="column">
-					<h3 className="feature-title">Feature {feature}</h3>
-					<FeatureDetails data={data} setFeatureNumber={setFeatureNumber} />
-				</div>
-			) : (
-				<div>Loading...</div>
-			)}
-		</div>
-	);
-};
+// const FeatureView = ({ feature, setFeatureNumber }) => {
+// 	const [data, setData] = useState(null);
 
-export default FeatureView;
+// 	const getData = async (feature) => {
+// 		console.log("Fetching data for feature:", feature);
+// 		const fetchedData = await fetchData(feature);
+// 		setData(fetchedData);
+// 	};
+
+// 	useEffect(() => {
+// 		getData(feature);
+// 	}, []);
+
+// 	useEffect(() => {
+// 		getData(feature);
+// 	}, [feature]);
+
+// 	useEffect(() => {
+// 		if (data) {
+// 			console.log(feature);
+// 			console.log("Data updated:", data);
+// 			console.log("Values:", data.values);
+// 			console.log("Indices:", data.indices);
+// 		}
+// 	}, [data]);
+
+// 	return (
+// 		<div className="feature-view row">
+// 			{data ? (
+// 				<div className="column">
+// 					<h3 className="feature-title">Feature {feature}</h3>
+// 					<FeatureDetails data={data} setFeatureNumber={setFeatureNumber} />
+// 				</div>
+// 			) : (
+// 				<div>Loading...</div>
+// 			)}
+// 		</div>
+// 	);
+// };
+
+// export default FeatureView;

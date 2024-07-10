@@ -17,7 +17,7 @@
 }
 
 .neuron-history {   
-    /* height: 40px; */
+    height: 60px;
     border-bottom: 2px solid #e9ecef;
     overflow-x: scroll;
     position: relative;
@@ -76,7 +76,6 @@
 .neuron-view {
     height: 250px;
     display: flex;
-    gap: 20px;
     border-bottom: 2px solid #e9ecef;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     position: relative;
@@ -87,6 +86,8 @@
     min-width: 300px;
     max-width: 300px;
     padding: 20px;
+    position: relative;
+    padding-bottom: 50px;
 }
 
 .neuron-bar:first-child {
@@ -99,15 +100,17 @@
 
 .neuron-bar h3 {
     margin-top: 0;
-    margin-bottom: 15px;
+    margin-bottom: 0;
     color: #333;
-    padding-bottom: 5px;
 }
 
 .neuron-bar .input-group {
     display: flex;
     align-items: center;
-    margin-bottom: 15px;
+}
+
+.input-group {
+    margin: 10px 0;
 }
 
 .neuron-bar input[type="number"] {
@@ -118,7 +121,7 @@
 }
 
 .neuron-bar button {
-    margin-left: 10px;
+    /* margin-left: 10px; */
     padding: 8px 12px;
     background-color: #007bff;
     color: white;
@@ -148,13 +151,36 @@
     text-decoration: underline;
 }
 
+.add-feature-button {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    /* padding: 10px; */
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.down-arrow {
+    margin-left: 10px;
+}
+
+.feature-link {
+    cursor: pointer;
+}
+
 /* Feature View */
 
 .feature-title { 
     font-size: 20px;
     /* font-weight: bold; */
-    width: 100%;
-    margin: 0px 00px;
+    /* width: 100%; */
+    margin: 0px 15px 0px 0px;
 }
 
 .feature-dampened {
@@ -162,6 +188,11 @@
     font-weight: bold;
     margin-top: 15px;
     color: lightgrey;
+}
+
+.feature-view-container {
+    height:calc(100vh - 315px);
+    overflow-y: scroll;
 }
 
 .feature-view {
@@ -203,30 +234,46 @@
     position: relative;
     overflow: visible;
     padding: 30px 0 0 0;
+    
 }
 
 .feature-bar {
     background-color: #e0e0e0;
     border: 1px solid #bdbdbd;
     color: #333;
-    padding: 8px 12px;
-    text-align: right;
+    padding: 8px;
     min-width: 60px;
     height: 60px;
     cursor: pointer;
     border-radius: 4px;
-    /* box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); */
     transition: all 0.3s ease;
     display: flex;
-    align-items: center;
+    flex-direction: column;
     justify-content: flex-end;
-    font-weight: 600;
+    align-items: flex-end;
+    user-select: none;
 }
 
 .feature-bar:hover {
     background-color: #d0d0d0;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    /* transform: translateY(-2px); */
+}
+
+.feature-bar-index {
+    font-weight: 700;
+    font-size: 1.1em;
+    flex-shrink: 0;
+    margin-right: 5px;
+}
+
+.feature-bar-description {
+    color: #666;
+    font-size: 0.5em;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%; /* Ensure it doesn't exceed the parent's width */
 }
 
 .related-feature {
@@ -234,8 +281,51 @@
     padding: 5px;
     margin: 2px 0;
     text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%; /* Ensure it doesn't exceed the parent's width */
 }
 
+/* Search Results Styling */
+.search-results {
+    max-height: 300px;
+    width: calc(100% - 40px);
+    overflow-y: auto;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: absolute; 
+    z-index: 10; 
+}
+
+.search-result-item {
+    padding: 10px 15px;
+    border-bottom: 1px solid #e9ecef;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    z-index: 1;
+
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item:hover {
+    background-color: #f8f9fa;
+}
+
+.result-number {
+    font-weight: bold;
+    margin-right: 10px;
+    color: #007bff;
+}
+
+.result-description {
+    color: #333;
+}
 
 /* Old */
 
