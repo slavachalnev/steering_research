@@ -50,3 +50,19 @@ export const fetchSearchResults = async (searchQuery, setSearchResults) => {
 		console.error("Error fetching search results:", error);
 	}
 };
+
+export const fetchTopEffects = async (feature) => {
+	console.log("fetching top effects for feature: " + feature);
+	try {
+		const response = await fetch(
+			`http://localhost:5000/get_top_effects?feature=${feature}`
+		);
+		if (!response.ok) {
+			throw new Error("Network response was not ok");
+		}
+		const rawData = await response.json();
+		return rawData;
+	} catch (error) {
+		console.error("There was a problem fetching top effects:", error);
+	}
+};

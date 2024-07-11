@@ -16,6 +16,14 @@ except Exception as e:
     print(f"Error loading PyTorch files: {e}")
     exit(1)
 
+# Load tensors from load_effects.py
+try:
+    top_indices = torch.load("top_is_8000_16000.pt", map_location=torch.device("cpu"))
+    top_values = torch.load("top_vs_8000_16000.pt", map_location=torch.device("cpu"))
+except Exception as e:
+    print(f"Error loading PyTorch files for top effects: {e}")
+    exit(1)
+
 # Load the new_autointerp.json file
 with open("new_autointerp.json", "r") as f:
     autointerp_data = json.load(f)
@@ -56,6 +64,41 @@ def get_data():
 
     indices = cos_sim_indices[index].tolist()
     values = cos_sim_values[index].tolist()
+
+    response = jsonify({"indices": indices, "values": values})
+
+    # Add CORS headers to the response
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+
+    return response
+
+
+@app.route("/get_top_effects", methods=["OPTIONS"])
+def handle_get_top_effects_options():
+    response = app.make_default_options_response()
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
+
+@app.route("/get_top_effects", methods=["GET"])
+def get_top_effects():
+    feature = request.args.get("feature", type=int)
+    print(feature)
+
+    if feature is None:
+        return jsonify({"error": "Missing feature parameter"}), 400
+
+    shifted_feature = feature - 8000
+
+    if shifted_feature < 0 or shifted_feature >= 16000:
+        return jsonify({"error": "Feature out of range"}), 400
+
+    indices = top_indices[shifted_feature].tolist()
+    values = top_values[shifted_feature].tolist()
 
     response = jsonify({"indices": indices, "values": values})
 

@@ -26,7 +26,7 @@ const FeatureDetailsRow = ({
 	const barRefs = useRef([]);
 	const updatedIndices = row.indices;
 	const normalizedValues = normalizeValues(row.values);
-	const descriptions = row.descriptions.slice(1);
+	const descriptions = row.descriptions;
 	const [svgPath, setSvgPath] = useState(null);
 	const color = "rgba(0, 50, 200, 0.3)";
 
@@ -66,7 +66,6 @@ const FeatureDetailsRow = ({
 	}, [previousBarRef, rowRef, row]);
 
 	const handleBarClick = (barRef, barIndex) => {
-		console.log(barRef);
 		handleRowUpdate(barRef, index);
 		// setFeatureNumber(updatedIndices[barIndex]);
 	};

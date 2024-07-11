@@ -274,10 +274,14 @@
     color: #666;
     font-size: 0.5em;
     text-align: right;
-    white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%; /* Ensure it doesn't exceed the parent's width */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    word-break: break-word;
+    max-width: 100%;
+    max-height: 3em;
+    line-height: 1em;
 }
 
 .related-feature {
@@ -285,9 +289,9 @@
     padding: 5px;
     margin: 2px 0;
     text-align: right;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: visible; /* Changed from hidden to visible */
+    white-space: normal; /* Changed from wrap to normal */
+    word-wrap: break-word; /* Added to ensure wrapping */
     max-width: 100%; /* Ensure it doesn't exceed the parent's width */
 }
 

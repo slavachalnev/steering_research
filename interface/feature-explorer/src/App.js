@@ -1,7 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./App.css";
 import FeatureView, { NewFeatureDetails, FeatureLink } from "./FeatureView";
-import { fetchData, fetchDescriptions, fetchSearchResults } from "./utils";
+import {
+	fetchData,
+	fetchDescriptions,
+	fetchSearchResults,
+	fetchTopEffects,
+} from "./utils";
 
 function App() {
 	// History bar
@@ -18,6 +23,7 @@ function App() {
 
 	const [newFeatures, setNewFeatures] = useState([]);
 
+	// Search query
 	const [searchQuery, setSearchQuery] = useState("");
 	const [searchResults, setSearchResults] = useState([]);
 	const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -28,10 +34,6 @@ function App() {
 	useEffect(() => {
 		if (featureNumber) setValue(featureNumber);
 	}, [featureNumber]);
-
-	useEffect(() => {
-		console.log(newFeatures);
-	}, [newFeatures]);
 
 	useEffect(() => {
 		const handleScroll = () => {
@@ -81,19 +83,34 @@ function App() {
 	};
 
 	const getData = async (feature) => {
-		const data = await fetchData(feature);
+		// Fetch top effects instead of all data
+		const topEffects = await fetchTopEffects(feature);
+		if (!topEffects) {
+			alert("Error fetching feature effects");
+			return;
+		}
 		const description = await fetchDescriptions([feature]);
 
-		// Fetch descriptions for all indices
-		const descriptions = await fetchDescriptions(data.indices);
-		const orderedDescriptions = data.indices.map(
+		// Filter out zero values and their corresponding indices
+		const filteredIndices = [];
+		const filteredValues = [];
+		topEffects.indices.forEach((index, i) => {
+			if (topEffects.values[i] !== 0 && filteredIndices.length <= 10) {
+				filteredIndices.push(index);
+				filteredValues.push(topEffects.values[i]);
+			}
+		});
+
+		// Fetch descriptions for filtered indices
+		const descriptions = await fetchDescriptions(filteredIndices);
+		const orderedDescriptions = filteredIndices.map(
 			(index) => descriptions[index] || ""
 		);
 
 		let dataset = {
-			indices: data.indices.slice(1),
-			values: data.values.slice(1),
-			descriptions: orderedDescriptions.slice(1),
+			indices: filteredIndices,
+			values: filteredValues,
+			descriptions: orderedDescriptions,
 		};
 
 		let newFeature = {
@@ -147,19 +164,34 @@ function App() {
 			// Remove this row and all subsequent rows
 			newRows = newRows.slice(0, rowIndex + 1);
 		} else {
-			// Fetch new data and add it to the rows
-			const data = await fetchData(ref.getAttribute("feature-number"));
-			const descriptions = await fetchDescriptions(data.indices);
+			// Fetch top effects instead of all data
+			const topEffects = await fetchTopEffects(
+				ref.getAttribute("feature-number")
+			);
+			if (!topEffects) {
+				alert("Error fetching feature effects");
+				return;
+			}
+			// Filter out zero values and their corresponding indices
+			const filteredIndices = [];
+			const filteredValues = [];
+			topEffects.indices.forEach((index, i) => {
+				if (topEffects.values[i] !== 0 && filteredIndices.length <= 10) {
+					filteredIndices.push(index);
+					filteredValues.push(topEffects.values[i]);
+				}
+			});
 
-			// Create an ordered array of descriptions
-			const orderedDescriptions = data.indices.map(
+			// Fetch descriptions for filtered indices
+			const descriptions = await fetchDescriptions(filteredIndices);
+			const orderedDescriptions = filteredIndices.map(
 				(index) => descriptions[index] || ""
 			);
 
 			let dataset = {
-				indices: data.indices.slice(1),
-				values: data.values.slice(1),
-				descriptions: orderedDescriptions.slice(1),
+				indices: filteredIndices,
+				values: filteredValues,
+				descriptions: orderedDescriptions,
 				ref: ref, // Store the ref in the dataset
 			};
 			newRows = [...newRows.slice(0, rowIndex + 1), dataset];
