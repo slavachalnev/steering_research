@@ -166,5 +166,7 @@ cython_debug/
 
 
 # training
-optim/comparison_data/*
+optim/comparison_data
+optim/auto_data
+optim/checkpoints
 wandb/

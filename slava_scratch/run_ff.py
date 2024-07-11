@@ -112,21 +112,34 @@ top_is = []
 from_idx = 0
 to_idx = 8000
 
-for i in tqdm(range(from_idx, to_idx)):
-    if i not in live_neurons:
-        top_vs.append(torch.zeros(20, dtype=torch.float32))
-        top_is.append(torch.zeros(20, dtype=torch.int64))
-        continue
-    ft_dist = get_feature_acts(gen(i), 64)
-    diff = ft_dist - baseline_dist
-    top_v, top_i = torch.topk(diff, 20, dim=-1)
-    top_vs.append(top_v.cpu())
-    top_is.append(top_i.cpu())
+early_stop = False
 
-all_top_vs = torch.stack(top_vs)
-all_top_is = torch.stack(top_is)
-torch.save(all_top_vs, f"top_vs_{from_idx}_{to_idx}.pt")
-torch.save(all_top_is, f"top_is_{from_idx}_{to_idx}.pt")
+try:
+    for i in tqdm(range(from_idx, to_idx)):
+        if i not in live_neurons:
+            top_vs.append(torch.zeros(20, dtype=torch.float32))
+            top_is.append(torch.zeros(20, dtype=torch.int64))
+            continue
+        ft_dist = get_feature_acts(gen(i), 64)
+        diff = ft_dist - baseline_dist
+        top_v, top_i = torch.topk(diff, 20, dim=-1)
+        top_vs.append(top_v.cpu())
+        top_is.append(top_i.cpu())
+except KeyboardInterrupt:
+    # save the results so far
+    print("Saving results so far")
+    all_top_vs = torch.stack(top_vs)
+    all_top_is = torch.stack(top_is)
+    up_to_idx = from_idx + all_top_vs.shape[0]
+    torch.save(all_top_vs, f"top_vs_{from_idx}_{up_to_idx}.pt")
+    torch.save(all_top_is, f"top_is_{from_idx}_{up_to_idx}.pt")
+    early_stop = True
+
+if not early_stop:
+    all_top_vs = torch.stack(top_vs)
+    all_top_is = torch.stack(top_is)
+    torch.save(all_top_vs, f"top_vs_{from_idx}_{to_idx}.pt")
+    torch.save(all_top_is, f"top_is_{from_idx}_{to_idx}.pt")
 
 # acts_baseline = get_feature_acts(gen(), 64)
 # acts_london = get_feature_acts(gen(10138), 64)
