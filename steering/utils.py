@@ -37,7 +37,7 @@ def text_to_sae_feats(
 
     all_sae_acts = []
     for batch in acts:
-        sae_acts = sae.encode(batch)
+        sae_acts = sae.encode(batch.to(sae.device))
         all_sae_acts.append(sae_acts)
     
     return torch.stack(all_sae_acts, dim=0)

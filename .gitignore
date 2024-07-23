@@ -170,3 +170,5 @@ optim/comparison_data
 optim/auto_data
 optim/checkpoints
 wandb/
+
+*.pt
