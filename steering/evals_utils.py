@@ -48,7 +48,7 @@ def evaluate_completions(
         completions: list[str],
         criterion: str,
         prompt: str,
-        model="gpt-3.5-turbo", # gpt-4o
+        model="gpt-4o-mini", # gpt-4o, gpt-3.5-turbo
         verbose=False,
         ):
     async def evaluate_all():

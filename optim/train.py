@@ -248,14 +248,14 @@ if __name__ == '__main__':
     train_cfg = {
         'batch_size': 8,
         'total_steps': int(3e4),
-        'lr': 1e-3,
+        'lr': 2e-4,
         'beta': 0.1,
         'model': 'gemma-2b',
         'base_scale': 50,
         'adapter_hidden_size': 2,
         'do_relu': False,
     }
-    dataset = Comparisons('comparison_data')
+    dataset = Comparisons('auto_data')
     dataloader = DataLoader(dataset, batch_size=train_cfg['batch_size'], shuffle=True)
 
     # Initialize wandb
@@ -272,7 +272,7 @@ if __name__ == '__main__':
     sae6 = sae6.to(device)
     normalise_decoder(sae6)
 
-    with open('comparison_data/steering_vectors.json', 'r') as f:
+    with open('auto_data/steering_vectors.json', 'r') as f:
         vector_info = json.load(f)
     
     with torch.no_grad():
@@ -284,11 +284,11 @@ if __name__ == '__main__':
     # eval before training
     eval(vector_info, model, steering_vectors, None)
 
-    adapter = Adapter(steering_vectors.shape[1],
-                      hidden_size=train_cfg['adapter_hidden_size'],
-                      do_relu=train_cfg['do_relu'],
-                      )
-    # adapter = AdapterFull(steering_vectors.shape[1])
+    # adapter = Adapter(steering_vectors.shape[1],
+    #                   hidden_size=train_cfg['adapter_hidden_size'],
+    #                   do_relu=train_cfg['do_relu'],
+    #                   )
+    adapter = AdapterFull(steering_vectors.shape[1])
     adapter.to(device)
 
     # no grad for first 5 layers
