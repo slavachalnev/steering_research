@@ -53,17 +53,19 @@ test_dataset = dataset[-100:]
 def get_sample_tuple(dataset, idx):
     return dataset['question'][idx], dataset['answer_matching_behavior'][idx], dataset['answer_not_matching_behavior'][idx]
 
+def text_to_prompt(text, append_gen=True):
+    return model.tokenizer.apply_chat_template(
+        [{"role": "user", "content": text}],
+        return_tensors='pt',
+        add_generation_prompt=append_gen,
+    ).to(device)
 
 # %%
 # Run forward pass, cache activations at last token
 
 @torch.no_grad()
 def get_activations_for_sample(question, match, not_match):
-    question_tokens = model.tokenizer.apply_chat_template(
-        [{"role": "user", "content": question}],
-        return_tensors='pt',
-        add_generation_prompt=True,
-    ).to(device)
+    question_tokens = text_to_prompt(question)
     question_tokens = question_tokens.expand(2, -1)
     answer_tokens = torch.stack((model.to_tokens(match, prepend_bos=False)[0],
                               model.to_tokens(not_match, prepend_bos=False)[0]))
@@ -75,6 +77,7 @@ def get_activations_for_sample(question, match, not_match):
     diffs = [cache[p][0, -1, :] - cache[p][1, -1, :] for p in points]
     return torch.stack(diffs)
 
+@torch.no_grad()
 def compute_diffs_for_dataset(dataset, n_samples=None):
     total_diffs = torch.zeros(model.cfg.n_layers, model.cfg.d_model, device=device)
     n = len(dataset['question'])
@@ -85,17 +88,60 @@ def compute_diffs_for_dataset(dataset, n_samples=None):
     total_diffs /= n
     return total_diffs
 
-diffs = compute_diffs_for_dataset(train_dataset)
+diffs = compute_diffs_for_dataset(train_dataset, n_samples=200)
 
 
 # %%
-# Compute steering vectors for each layer
-
-
+@torch.no_grad()
+def measure_steering_effect(layer, scale=1.0):
+    steering = diffs[layer]
+    n_samples = len(test_dataset['question'])
+    total_logit_diff = 0
+    for i in range(n_samples):
+        question, match, not_match = get_sample_tuple(test_dataset, i)
+        question_tokens = text_to_prompt(question)
+        pos_id = model.to_tokens(match, prepend_bos=False)[0].item()
+        neg_id = model.to_tokens(not_match, prepend_bos=False)[0].item()
+        # compute logit difference
+        with model.hooks([(f'blocks.{layer}.hook_resid_post',
+                           partial(patch_resid, steering=steering, scale=scale))]):
+            logits = model(question_tokens, return_type='logits')
+        logit_diff = logits[0, -1, pos_id] - logits[0, -1, neg_id]
+        total_logit_diff += logit_diff.item()
+    
+    total_logit_diff /= n_samples
+    return total_logit_diff
+        
+measure_steering_effect(20)
 
 # %%
 
-print(train_dataset['question'][0])
-print(train_dataset['answer_matching_behavior'][0])
-print(train_dataset['answer_not_matching_behavior'][0])
+def all_layer_effects():
+    effects = []
+    for i in tqdm(range(model.cfg.n_layers)):
+        effects.append(measure_steering_effect(i))
+    return effects
+
+all_effects = all_layer_effects()
+
+# %%
+
+df = pd.DataFrame({
+    'Layer': range(len(all_effects)),
+    'Effect': all_effects
+})
+fig = px.line(df, x='Layer', y='Effect', title='Steering Effects per Layer')
+fig.update_traces(mode='lines+markers')
+fig.update_layout(
+    xaxis_title='Layer',
+    yaxis_title='Effect',
+    width=800,
+    height=500
+)
+fig.show()
+
+# %%
+
+print(model.to_str_tokens(model.generate(text_to_prompt(get_sample_tuple(test_dataset, 0)[0]))))
+
 # %%
