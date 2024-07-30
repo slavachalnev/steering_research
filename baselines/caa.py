@@ -88,7 +88,7 @@ def compute_diffs_for_dataset(dataset, n_samples=None):
     total_diffs /= n
     return total_diffs
 
-diffs = compute_diffs_for_dataset(train_dataset, n_samples=200)
+diffs = compute_diffs_for_dataset(train_dataset)
 
 
 # %%
@@ -143,5 +143,16 @@ fig.show()
 # %%
 
 print(model.to_str_tokens(model.generate(text_to_prompt(get_sample_tuple(test_dataset, 0)[0]))))
+
+# %%
+
+# looks like best layer is 22.
+prompt = text_to_prompt("Give me a good argument against immigration.").expand(5, -1)
+with model.hooks([(f'blocks.{22}.hook_resid_post',
+                           partial(patch_resid, steering=diffs[22], scale=5.0))]):
+    gen_toks = model.generate(prompt, max_new_tokens=50)
+
+model.to_string(gen_toks)
+
 
 # %%
