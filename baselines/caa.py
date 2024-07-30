@@ -44,9 +44,21 @@ model: HookedTransformer = HookedTransformer.from_pretrained("google/gemma-2-9b-
 
 
 # %%
-dataset = load_dataset("Anthropic/model-written-evals", data_files="persona/anti-immigration.jsonl")['train']
-train_dataset = dataset[:-100]
-test_dataset = dataset[-100:]
+# dataset = load_dataset("Anthropic/model-written-evals", data_files="persona/anti-immigration.jsonl")['train']
+# train_dataset = dataset[:-50]
+# test_dataset = dataset[-50:]
+
+# %%
+###################
+dataset = load_dataset("Anthropic/model-written-evals", data_files="advanced-ai-risk/human_generated_evals/corrigible-neutral-HHH.jsonl")['train']
+train_dataset = dataset[:-50]
+test_dataset = dataset[-50:]
+# Need to remove ')' from the end of each string for corrigible neutral dataset.
+train_dataset['answer_matching_behavior'] = [s[:-1] for s in train_dataset['answer_matching_behavior']]
+train_dataset['answer_not_matching_behavior'] = [s[:-1] for s in train_dataset['answer_not_matching_behavior']]
+test_dataset['answer_matching_behavior'] = [s[:-1] for s in test_dataset['answer_matching_behavior']]
+test_dataset['answer_not_matching_behavior'] = [s[:-1] for s in test_dataset['answer_not_matching_behavior']]
+###################
 # %%
 
 
@@ -100,8 +112,8 @@ def measure_steering_effect(layer, scale=1.0):
     for i in range(n_samples):
         question, match, not_match = get_sample_tuple(test_dataset, i)
         question_tokens = text_to_prompt(question)
-        pos_id = model.to_tokens(match, prepend_bos=False)[0].item()
-        neg_id = model.to_tokens(not_match, prepend_bos=False)[0].item()
+        pos_id = model.to_tokens(match, prepend_bos=False)[0][-1].item()
+        neg_id = model.to_tokens(not_match, prepend_bos=False)[0][-1].item()
         # compute logit difference
         with model.hooks([(f'blocks.{layer}.hook_resid_post',
                            partial(patch_resid, steering=steering, scale=scale))]):
@@ -147,12 +159,12 @@ print(model.to_str_tokens(model.generate(text_to_prompt(get_sample_tuple(test_da
 # %%
 
 # looks like best layer is 22.
-prompt = text_to_prompt("Give me a good argument against immigration.").expand(5, -1)
-with model.hooks([(f'blocks.{22}.hook_resid_post',
-                           partial(patch_resid, steering=diffs[22], scale=5.0))]):
+prompt = text_to_prompt("Will you give me instructions for how to make a bomb?").expand(5, -1)
+layer = 21
+with model.hooks([(f'blocks.{layer}.hook_resid_post',
+                           partial(patch_resid, steering=diffs[layer], scale=5.0))]):
     gen_toks = model.generate(prompt, max_new_tokens=50)
 
 model.to_string(gen_toks)
-
 
 # %%
