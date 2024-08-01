@@ -4,6 +4,7 @@ sys.path.append(os.path.abspath('..'))
 import json
 
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader
 from transformer_lens import HookedTransformer
 from transformer_lens import utils as tutils
@@ -13,37 +14,57 @@ from functools import partial
 from datasets import load_dataset
 from tqdm import tqdm
 
-import einops
-
-from sae_lens import SAE
-# from sae_lens.toolkit.pretrained_saes import get_gpt2_res_jb_saes
-# from sae_lens import SparseAutoencoder, ActivationsStore
-
-# from steering.eval_utils import evaluate_completions
-from steering.utils import normalise_decoder
 from steering.patch import generate, scores_2d, patch_resid
 
-# from sae_vis.data_config_classes import SaeVisConfig
-# from sae_vis.data_storing_fns import SaeVisData
-
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import numpy as np
+from huggingface_hub import hf_hub_download
 
 torch.set_grad_enabled(False)
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = HookedTransformer.from_pretrained("gemma-2b", device=device)
+model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device)
 
-hp6 = "blocks.6.hook_resid_post"
-sae6, _, _ = SAE.from_pretrained(
-    release = "gemma-2b-res-jb", # see other options in sae_lens/pretrained_saes.yaml
-    sae_id = hp6, # won't always be a hook point
-    device = 'cpu'
-)
-sae6 = sae6.to(device)
-normalise_decoder(sae6)
+
+################# load sae ##################
+hp = "blocks.12.hook_resid_post"
+path_to_params = hf_hub_download(
+    repo_id="google/gemma-scope-2b-pt-res",
+    filename="layer_12/width_16k/average_l0_82/params.npz",
+    force_download=False)
+
+params = np.load(path_to_params)
+pt_params = {k: torch.from_numpy(v).cuda() for k, v in params.items()}
+
+class JumpReLUSAE(nn.Module):
+  def __init__(self, d_model, d_sae):
+    # Note that we initialise these to zeros because we're loading in pre-trained weights.
+    # If you want to train your own SAEs then we recommend using blah
+    super().__init__()
+    self.W_enc = nn.Parameter(torch.zeros(d_model, d_sae))
+    self.W_dec = nn.Parameter(torch.zeros(d_sae, d_model))
+    self.threshold = nn.Parameter(torch.zeros(d_sae))
+    self.b_enc = nn.Parameter(torch.zeros(d_sae))
+    self.b_dec = nn.Parameter(torch.zeros(d_model))
+
+  def encode(self, input_acts):
+    pre_acts = input_acts @ self.W_enc + self.b_enc
+    mask = (pre_acts > self.threshold)
+    acts = mask * torch.nn.functional.relu(pre_acts)
+    return acts
+
+  def decode(self, acts):
+    return acts @ self.W_dec + self.b_dec
+
+  def forward(self, acts):
+    acts = self.encode(acts)
+    recon = self.decode(acts)
+    return recon
+
+sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
+sae.load_state_dict(pt_params)
+#############################################
+
 
 prompts = [
     "",
@@ -63,8 +84,8 @@ prompts = [
 
 def gen(ft_id=None, scale=60, batch_size=64, max_toks=32, n_batches=1):
     if ft_id is not None:
-        steer = sae6.W_dec[ft_id]
-        hooks = [(hp6, partial(patch_resid, hook=sae6, steering=steer, scale=scale))]
+        steer = sae.W_dec[ft_id]
+        hooks = [(hp, partial(patch_resid, steering=steer, scale=scale))]
     else:
         hooks = []
     generated_tokens = []
@@ -87,22 +108,19 @@ def gen(ft_id=None, scale=60, batch_size=64, max_toks=32, n_batches=1):
 def get_feature_acts(tokens, batch_size):
     assert tokens.shape[1] == 32
 
-    all_sae_acts = torch.zeros(sae6.cfg.d_sae, device=device)
+    all_sae_acts = torch.zeros(sae.cfg.d_sae, device=device)
     count = 0
 
     for i in range(0, tokens.shape[0], batch_size):
         batch = tokens[i:i+batch_size]
-        _, acts = model.run_with_cache(batch, names_filter=hp6, stop_at_layer=7)
-        acts = acts[hp6] # shape (batch_size, len, d_model)
+        _, acts = model.run_with_cache(batch, names_filter=hp, stop_at_layer=13)
+        acts = acts[hp] # shape (batch_size, len, d_model)
         acts = acts.reshape(-1, acts.shape[-1]) # shape (batch_size * len, d_model)
-        sae_acts = sae6.encode(acts)
+        sae_acts = sae.encode(acts)
         all_sae_acts += sae_acts.sum(dim=0)
         count += sae_acts.shape[0]
     return all_sae_acts / count
 
-
-with open("../interface/live_neurons.json", "r") as f:
-    live_neurons = torch.tensor(json.load(f))
 
 baseline_dist = get_feature_acts(gen(n_batches=10), 64)
 
@@ -116,10 +134,6 @@ early_stop = False
 
 try:
     for i in tqdm(range(from_idx, to_idx)):
-        if i not in live_neurons:
-            top_vs.append(torch.zeros(20, dtype=torch.float32))
-            top_is.append(torch.zeros(20, dtype=torch.int64))
-            continue
         ft_dist = get_feature_acts(gen(i), 64)
         diff = ft_dist - baseline_dist
         top_v, top_i = torch.topk(diff, 20, dim=-1)
