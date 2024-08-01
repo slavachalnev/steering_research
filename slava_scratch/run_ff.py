@@ -63,6 +63,7 @@ class JumpReLUSAE(nn.Module):
 
 sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
 sae.load_state_dict(pt_params)
+sae.to(device)
 #############################################
 
 
@@ -82,14 +83,14 @@ prompts = [
     ]
 
 
-def gen(ft_id=None, scale=60, batch_size=64, max_toks=32, n_batches=1):
+def gen(ft_id=None, scale=60, batch_size=64, max_toks=32, n_batches=1, verbose=False):
     if ft_id is not None:
         steer = sae.W_dec[ft_id]
         hooks = [(hp, partial(patch_resid, steering=steer, scale=scale))]
     else:
         hooks = []
     generated_tokens = []
-    for prompt in prompts:
+    for prompt in tqdm(prompts, disable=not verbose):
         tokens = model.to_tokens(prompt, prepend_bos=True)
         prompt_batch = tokens.expand(batch_size, -1)
         for _ in range(n_batches):
@@ -107,10 +108,8 @@ def gen(ft_id=None, scale=60, batch_size=64, max_toks=32, n_batches=1):
 
 def get_feature_acts(tokens, batch_size):
     assert tokens.shape[1] == 32
-
-    all_sae_acts = torch.zeros(sae.cfg.d_sae, device=device)
+    all_sae_acts = torch.zeros(sae.W_dec.shape[0], device=device)
     count = 0
-
     for i in range(0, tokens.shape[0], batch_size):
         batch = tokens[i:i+batch_size]
         _, acts = model.run_with_cache(batch, names_filter=hp, stop_at_layer=13)
@@ -122,7 +121,9 @@ def get_feature_acts(tokens, batch_size):
     return all_sae_acts / count
 
 
-baseline_dist = get_feature_acts(gen(n_batches=10), 64)
+print("Getting baseline feature acts")
+baseline_dist = get_feature_acts(gen(n_batches=10, verbose=True), 64) ### n_batches=10
+print("done baseline")
 
 top_vs = []
 top_is = []
