@@ -16,23 +16,6 @@ torch.set_grad_enabled(False)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device)
 
-# %%
-
-def get_gemma2_2b_SAE_path(layer, width=16, closest_l0=100):
-    fs = HfFileSystem()
-    all_paths = fs.glob("google/gemma-scope-2b-pt-res/**/params.npz")
-    candidate_paths = [p for p in all_paths if f'layer_{layer}/width_{width}k/average_l0_' in p]
-    # get the l0 value from the path
-    l0_values = [int(p.split('average_l0_')[1].split('/')[0]) for p in candidate_paths]
-    # find the one closest to closest_l0
-    idx = np.argmin(np.abs(np.array(l0_values) - closest_l0))
-    desire_l0 = l0_values[idx]
-    desire_path = candidate_paths[idx]
-    return desire_l0, desire_path
-
-for layer in range(model.cfg.n_layers):
-    l0, path = get_gemma2_2b_SAE_path(layer)
-    print(layer, l0, path)
 
 # %%
 
@@ -75,6 +58,7 @@ class JumpReLUSAE(nn.Module):
 
 sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
 sae.load_state_dict(pt_params)
+sae.to(device)
 
 # %%
 

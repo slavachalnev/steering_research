@@ -1,16 +1,14 @@
 from typing import List, Callable, Union, Optional, Literal
 
 from functools import partial
-from tqdm import tqdm
-import json
 
 import torch
 from torch.utils.data import DataLoader
-import einops
+from huggingface_hub import hf_hub_download, HfFileSystem
+
+import numpy as np
 
 from sae_lens import SAE
-
-from datasets import load_dataset
 
 from transformer_lens import HookedTransformer
 from transformer_lens.utilities import devices
@@ -53,7 +51,6 @@ def top_activations(activations: torch.Tensor, top_k: int=10):
     return top_v, top_i
 
 
-
 @torch.no_grad()
 def normalise_decoder(sae, scale_input=False):
     """
@@ -73,3 +70,16 @@ def normalise_decoder(sae, scale_input=False):
     if scale_input:
         raise NotImplementedError()
         sae.W_enc *= 0.2175 # computed in slava_scratch/scale_sae.ipynb
+
+        
+def get_gemma2_2b_SAE_path(layer, width=16, closest_l0=100):
+    fs = HfFileSystem()
+    all_paths = fs.glob("google/gemma-scope-2b-pt-res/**/params.npz")
+    candidate_paths = [p for p in all_paths if f'layer_{layer}/width_{width}k/average_l0_' in p]
+    # get the l0 value from the path
+    l0_values = [int(p.split('average_l0_')[1].split('/')[0]) for p in candidate_paths]
+    # find the one closest to closest_l0
+    idx = np.argmin(np.abs(np.array(l0_values) - closest_l0))
+    desire_l0 = l0_values[idx]
+    desire_path = candidate_paths[idx]
+    return desire_l0, desire_path
