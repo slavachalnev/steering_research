@@ -46,13 +46,13 @@ sae.load_state_dict(pt_params)
 sae.to(device)
 # %%
 
-batch_size = 128
+batch_size = 64
 data = tutils.load_dataset("NeelNanda/c4-code-20k", split="train")
 tokenized_data = tutils.tokenize_and_concatenate(data, model.tokenizer, max_length=32)
 tokenized_data = tokenized_data.shuffle(42)
 loader = DataLoader(tokenized_data, batch_size=batch_size)
 
-def compute_loss(steer, scales, n_batches=1):
+def compute_loss(steer, scales, n_batches=2):
     losses = []
     for scale in scales:
         total_loss = 0
@@ -63,20 +63,23 @@ def compute_loss(steer, scales, n_batches=1):
             if batch_idx >= n_batches:
                 break
         losses.append(total_loss.item() / n_batches)
+        if total_loss.item()/n_batches > 8:
+            break
     return losses
 
-def compute_all(scales, n):
+def compute_all(scales, from_i, to_i):
     all_losses = []
     try:
-        for i in tqdm(range(n)):
+        for i in tqdm(range(from_i, to_i)):
             steer = sae.W_dec[i]
-            losses = compute_loss(steer, scales, 1)
+            losses = compute_loss(steer, scales, 2)
             all_losses.append(losses)
     except KeyboardInterrupt:
         print("\nInterrupt received. Saving partial results...")
     finally:
         if all_losses:
-            filename = f'losses_0_{len(all_losses)}.json'
+            # filename = f'losses_0_{len(all_losses)}.json'
+            filename = f'losses_{from_i}_{len(all_losses)+from_i}.json'
             with open(filename, 'w') as f:
                 json.dump(all_losses, f)
             print(f"Results saved to {filename}")
@@ -85,7 +88,7 @@ def compute_all(scales, n):
 
 # %%
 
-all_losses = compute_all(list(range(20, 220, 20)), sae.W_dec.shape[0])
+all_losses = compute_all(list(range(20, 220, 20)), from_i=0, to_i=sae.W_dec.shape[0])
 
 
 # %%
