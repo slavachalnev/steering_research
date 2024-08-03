@@ -65,7 +65,7 @@ def multi_criterion_evaluation(
         completions: list[str],
         criterions: list[str],
         prompt: str,
-        model="gpt-3.5-turbo",
+        model="gpt-4o-mini",
         verbose=False,
         filter_errors=True,
         batch_size=1000,
@@ -181,7 +181,7 @@ def compute_battles(
         models_completions: list[list[str]],
         criterion: str,
         prompt: str,
-        model="gpt-3.5-turbo",
+        model="gpt-4o-mini",
         batch_size=1000,
         n_iterations_per_model=50,
         ):
@@ -228,7 +228,7 @@ def run_comparisons(
         text_pairs: list[tuple[str, str]],
         criterion: str,
         prompt: str,
-        model="gpt-3.5-turbo",
+        model="gpt-4o-mini",
         batch_size=1000,
         ):
     
