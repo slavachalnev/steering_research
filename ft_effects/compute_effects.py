@@ -11,7 +11,6 @@ from transformer_lens import HookedTransformer
 from transformer_lens import utils as tutils
 from transformer_lens.evals import make_pile_data_loader, evaluate_on_dataset
 
-
 from functools import partial
 from datasets import load_dataset
 from tqdm import tqdm
@@ -42,6 +41,18 @@ sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
 sae.load_state_dict(pt_params)
 sae.to(device)
 #############################################
+
+
+def get_sae_dec():
+    path_to_params = hf_hub_download(
+        repo_id="google/gemma-scope-2b-pt-res",
+        filename="layer_12/width_65k/average_l0_72/params.npz",
+        force_download=False) 
+    params = np.load(path_to_params)
+    pt_params = {k: torch.from_numpy(v).cuda() for k, v in params.items()}
+    sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
+    sae.load_state_dict(pt_params)
+    return sae.W_dec.to(device)
 
 
 prompts = [
@@ -97,47 +108,70 @@ def get_feature_acts(tokens, batch_size):
     return all_sae_acts / count
 
 
-print("Getting baseline feature acts")
-baseline_dist = get_feature_acts(gen(n_batches=10, verbose=True), 64) ### n_batches=10
-print("done baseline")
+def get_scale(steer, loader, scales, n_batches=2, target_loss=6):
+    assert torch.allclose(torch.norm(steer), torch.tensor(1.0))
+    losses = []
+    for scale in scales:
+        total_loss = 0
+        for batch_idx, batch in enumerate(loader):
+            with model.hooks(fwd_hooks=[(hp, partial(patch_resid, steering=steer, scale=scale))]):
+                loss = model(batch['tokens'], return_type='loss')
+                total_loss += loss
+            if batch_idx >= n_batches:
+                break
+        losses.append(total_loss.item() / n_batches)
+        if total_loss.item()/n_batches > target_loss:
+            break
+    scales = scales[:len(losses)]
+    # linear interpolation
+    x1, x2 = scales[-2], scales[-1]
+    y1, y2 = losses[-2], losses[-1]
+    m = (y2 - y1) / (x2 - x1)
+    b = y1 - m * x1
+    target_scale = (target_loss - b) / m
+    return target_scale
 
-top_vs = []
-top_is = []
 
-from_idx = 0
-to_idx = 8000
+def all_effects(features, save_to: str):
+    """
+    Args:
+        features: steering vectors of shape (n_features, d_model)
+    """
+    baseline_dist = get_feature_acts(gen(n_batches=10, verbose=True), 64)
 
-early_stop = False
+    # prep data
+    data = tutils.load_dataset("NeelNanda/c4-code-20k", split="train")
+    tokenized_data = tutils.tokenize_and_concatenate(data, model.tokenizer, max_length=32)
+    tokenized_data = tokenized_data.shuffle(42)
+    loader = DataLoader(tokenized_data, batch_size=64)
 
-try:
-    for i in tqdm(range(from_idx, to_idx)):
-        feature = sae.W_dec[i]
-        ft_dist = get_feature_acts(gen(feature), 64)
-        diff = ft_dist - baseline_dist
-        top_v, top_i = torch.topk(diff, 20, dim=-1)
-        top_vs.append(top_v.cpu())
-        top_is.append(top_i.cpu())
-except KeyboardInterrupt:
-    # save the results so far
-    print("Saving results so far")
-    all_top_vs = torch.stack(top_vs)
-    all_top_is = torch.stack(top_is)
-    up_to_idx = from_idx + all_top_vs.shape[0]
-    torch.save(all_top_vs, f"top_vs_{from_idx}_{up_to_idx}.pt")
-    torch.save(all_top_is, f"top_is_{from_idx}_{up_to_idx}.pt")
-    early_stop = True
+    all_effects = []
+    used_features = []
+    try:
+        for feature in tqdm(features):
+            scale = get_scale(feature, loader, scales=list(range(0, 220, 20)), n_batches=2)
+            ft_dist = get_feature_acts(gen(feature, scale=scale), 64)
+            diff = ft_dist - baseline_dist
+            all_effects.append(diff.to("cpu"))
+            used_features.append((feature * scale).to("cpu"))
+    finally:
+        print("Saving results")
+        all_effects = torch.stack(all_effects)
+        used_features = torch.stack(used_features)
+        torch.save(all_effects, os.path.join(save_to, "all_effects.pt"))
+        torch.save(used_features, os.path.join(save_to, "used_features.pt"))
+        with open(os.path.join(save_to, "about.txt"), "w") as f:
+            f.write(f"all_effects shape: {all_effects.shape}\n")
+            f.write(f"used_features shape: {used_features.shape}\n")
 
-if not early_stop:
-    all_top_vs = torch.stack(top_vs)
-    all_top_is = torch.stack(top_is)
-    torch.save(all_top_vs, f"top_vs_{from_idx}_{to_idx}.pt")
-    torch.save(all_top_is, f"top_is_{from_idx}_{to_idx}.pt")
 
-# acts_baseline = get_feature_acts(gen(), 64)
-# acts_london = get_feature_acts(gen(10138), 64)
+# save_dir = "effects/G2_2B_L12/16k_from_0"
+# os.makedirs(save_dir)
+# all_effects(sae.W_dec[:3], save_dir)
 
-# london_diff = acts_london - acts_baseline
-# top_v, top_i = torch.topk(london_diff, 10, dim=-1)
-# print(top_i)
-# print(top_v)
+
+save_dir = "effects/G2_2B_L12/65k_from_0"
+os.makedirs(save_dir)
+all_effects(get_sae_dec()[:3], save_dir)
+
 
