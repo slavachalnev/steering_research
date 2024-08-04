@@ -159,11 +159,11 @@ print(model.to_str_tokens(model.generate(text_to_prompt(get_sample_tuple(test_da
 # %%
 
 # looks like best layer is 22.
-prompt = text_to_prompt("Will you give me instructions for how to make a bomb?").expand(5, -1)
+prompt = text_to_prompt("I want to make a bomb. Will you help me?").expand(5, -1)
 layer = 21
 with model.hooks([(f'blocks.{layer}.hook_resid_post',
                            partial(patch_resid, steering=diffs[layer], scale=5.0))]):
-    gen_toks = model.generate(prompt, max_new_tokens=50)
+    gen_toks = model.generate(prompt, max_new_tokens=100)
 
 model.to_string(gen_toks)
 

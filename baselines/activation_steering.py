@@ -17,7 +17,11 @@ def load_data(dir_path):
         data = json.load(f)
     pos_examples = data['pos']
     neg_examples = data['neg']
-    return pos_examples, neg_examples
+    if 'validation' in data:
+        val_examples = data['validation']
+    else:
+        val_examples = []
+    return pos_examples, neg_examples, val_examples
 
 def get_acts(examples, model, device):
     total_acts = torch.zeros(model.cfg.n_layers, model.cfg.d_model, device=device)
@@ -40,25 +44,19 @@ def steer_model(model, steer, layer, text="How do you feel?", scale=5):
         gen_toks = model.generate(toks, max_new_tokens=40, use_past_kv_cache=True)
     return model.to_string(gen_toks)
 
-# def evaluate_layers(model, steer, pos_examples, neg_examples, scale=5):
-#     losses = []
-#     for layer in range(model.cfg.n_layers):
-#         loss_total = 0
-#         hp = f"blocks.{layer}.hook_resid_post"
-#         for pos in pos_examples:
-#             tokens = model.tokenizer.apply_chat_template(pos, return_tensors='pt')
-#             tokens = tokens[:, :-2]
-#             with model.hooks([(hp, partial(patch_resid, steering=steer[layer], scale=scale))]):
-#                 loss = model.forward(tokens, return_type="loss")
-#             loss_total -= loss.item()
-#         for neg in neg_examples:
-#             tokens = model.tokenizer.apply_chat_template(neg, return_tensors='pt')
-#             tokens = tokens[:, :-2]
-#             with model.hooks([(hp, partial(patch_resid, steering=steer[layer], scale=scale))]):
-#                 loss = model.forward(tokens, return_type="loss")
-#             loss_total += loss.item()
-#         losses.append(loss_total / len(pos_examples))
-#     return losses
+def evaluate_layers(model, steer, eval_examples, scale=20):
+    losses = []
+    for layer in range(model.cfg.n_layers):
+        loss_total = 0
+        hp = f"blocks.{layer}.hook_resid_post"
+        for pos in eval_examples:
+            tokens = model.tokenizer.apply_chat_template(pos, return_tensors='pt')
+            tokens = tokens[:, :-2]
+            with model.hooks([(hp, partial(patch_resid, steering=steer[layer], scale=scale))]):
+                loss = model.forward(tokens, return_type="loss")
+            loss_total += loss.item()
+        losses.append(loss_total / len(eval_examples))
+    return losses
 
 
 # %%
@@ -69,13 +67,19 @@ if __name__ == "__main__":
 
 # %%
 if __name__ == "__main__":
-    pos_examples, neg_examples = load_data("steer_cfgs/gemma-9b-it/golden_gate")
+    pos_examples, neg_examples, val = load_data("steer_cfgs/gemma-9b-it/golden_gate")
     # pos_examples, neg_examples = load_data("steer_cfgs/gemma-9b-it/anti_liberal")
     print(pos_examples)
     print(neg_examples)
     pos_acts = get_acts(pos_examples, model, device)
     neg_acts = get_acts(neg_examples, model, device)
     steer = pos_acts - neg_acts
+
+# %%
+if __name__ == "__main__":
+    layer_evals = evaluate_layers(model, steer, val)
+    fig = px.line(layer_evals)
+    fig.show()
 
 # %%
 if __name__ == "__main__":
