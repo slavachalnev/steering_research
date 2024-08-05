@@ -123,6 +123,9 @@ def get_scale(steer, loader, scales, n_batches=2, target_loss=6):
         if total_loss.item()/n_batches > target_loss:
             break
     scales = scales[:len(losses)]
+    print("scales", scales)
+    print("losses", losses)
+
     # linear interpolation
     x1, x2 = scales[-2], scales[-1]
     y1, y2 = losses[-2], losses[-1]
@@ -132,7 +135,7 @@ def get_scale(steer, loader, scales, n_batches=2, target_loss=6):
     return target_scale
 
 
-def all_effects(features, save_to: str, scale=None):
+def all_effects(features, save_to: str, scale=None, n_base_batches=10):
     """
     Args:
         features: steering vectors of shape (n_features, d_model)
@@ -140,7 +143,7 @@ def all_effects(features, save_to: str, scale=None):
         scale: if not None, use this scale for all features. If None,
             then compute scale for each feature automatically.
     """
-    baseline_dist = get_feature_acts(gen(n_batches=10, verbose=True), 64)
+    baseline_dist = get_feature_acts(gen(n_batches=n_base_batches, verbose=True), 64)
 
     # prep data
     data = tutils.load_dataset("NeelNanda/c4-code-20k", split="train")
@@ -153,11 +156,13 @@ def all_effects(features, save_to: str, scale=None):
     try:
         for feature in tqdm(features):
             if scale is None:
-                scale = get_scale(feature, loader, scales=list(range(0, 220, 20)), n_batches=2)
-            ft_dist = get_feature_acts(gen(feature, scale=scale), 64)
+                optim_scale = get_scale(feature, loader, scales=list(range(0, 220, 20)), n_batches=2)
+            else:
+                optim_scale = scale
+            ft_dist = get_feature_acts(gen(feature, scale=optim_scale), 64)
             diff = ft_dist - baseline_dist
             all_effects.append(diff.to("cpu"))
-            used_features.append((feature * scale).to("cpu"))
+            used_features.append((feature * optim_scale).to("cpu"))
     finally:
         print("Saving results")
         all_effects = torch.stack(all_effects)
@@ -171,7 +176,7 @@ def all_effects(features, save_to: str, scale=None):
 
 # save_dir = "effects/G2_2B_L12/16k_from_0"
 # os.makedirs(save_dir)
-# all_effects(sae.W_dec[:3], save_dir)
+# all_effects(sae.W_dec[:20], save_dir, n_base_batches=2) ###
 
 
 # save_dir = "effects/G2_2B_L12/65k_from_0"
