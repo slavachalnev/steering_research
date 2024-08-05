@@ -49,6 +49,8 @@ sf = sae.W_dec[3124]
 marriage = sae.W_dec[2421]
 wedding = sae.W_dec[4230]
 
+serve_dish = sae.W_dec[1]
+
 
 def gen(prompt, steer, scale):
     toks = model.to_tokens(prompt, prepend_bos=True)
@@ -58,7 +60,7 @@ def gen(prompt, steer, scale):
     return model.to_string(gen_toks)
 
 # %%
-gen("I think", wedding, 80)
+gen("I think", serve_dish, 80)
 
 
 # %%
