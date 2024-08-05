@@ -132,10 +132,13 @@ def get_scale(steer, loader, scales, n_batches=2, target_loss=6):
     return target_scale
 
 
-def all_effects(features, save_to: str):
+def all_effects(features, save_to: str, scale=None):
     """
     Args:
         features: steering vectors of shape (n_features, d_model)
+        save_to: directory to save results
+        scale: if not None, use this scale for all features. If None,
+            then compute scale for each feature automatically.
     """
     baseline_dist = get_feature_acts(gen(n_batches=10, verbose=True), 64)
 
@@ -149,7 +152,8 @@ def all_effects(features, save_to: str):
     used_features = []
     try:
         for feature in tqdm(features):
-            scale = get_scale(feature, loader, scales=list(range(0, 220, 20)), n_batches=2)
+            if scale is None:
+                scale = get_scale(feature, loader, scales=list(range(0, 220, 20)), n_batches=2)
             ft_dist = get_feature_acts(gen(feature, scale=scale), 64)
             diff = ft_dist - baseline_dist
             all_effects.append(diff.to("cpu"))
@@ -170,8 +174,21 @@ def all_effects(features, save_to: str):
 # all_effects(sae.W_dec[:3], save_dir)
 
 
-save_dir = "effects/G2_2B_L12/65k_from_0"
-os.makedirs(save_dir)
-all_effects(get_sae_dec()[:3], save_dir)
+# save_dir = "effects/G2_2B_L12/65k_from_0"
+# os.makedirs(save_dir)
+# all_effects(get_sae_dec()[:3], save_dir)
 
+
+
+### interpolation ###
+wedding = sae.W_dec[4230]
+serve_dish = sae.W_dec[1]
+interp = []
+for alpha in np.linspace(0, 1, 21):
+    interp.append(alpha * wedding + (1-alpha) * serve_dish)
+interp = torch.stack(interp)
+interp = interp / torch.norm(interp, dim=-1, keepdim=True)
+save_dir = "effects/G2_2B_L12/interp_wedding_dish"
+os.makedirs(save_dir)
+all_effects(interp, save_dir)
 
