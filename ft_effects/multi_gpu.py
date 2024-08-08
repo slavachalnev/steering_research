@@ -1,6 +1,7 @@
 import os
 import sys
 sys.path.append(os.path.abspath('..'))
+import signal
 from ft_effects.utils import gen, get_feature_acts, get_scale
 
 from transformer_lens import utils as tutils
@@ -50,7 +51,7 @@ def worker(rank, world_size, task_queue, result_queue, features, scale=None):
     setup(rank, world_size)
     model, sae, loader = load_model_and_sae(rank)
 
-    baseline_samples = gen(model=model, n_batches=1) ### 10
+    baseline_samples = gen(model=model, n_batches=10)
     baseline_dist = get_feature_acts(model=model, sae=sae, tokens=baseline_samples, batch_size=64)
     
     while True:
@@ -121,7 +122,13 @@ def main(features, save_dir):
         
         # Wait for all processes to finish
         for p in processes:
-            p.join()
+            p.join(timeout=5)  # Wait up to 5 seconds for each process to join
+
+        # Force kill any processes that didn't join in time
+        for p in processes:
+            if p.is_alive():
+                print(f"Force terminating process {p.pid}")
+                os.kill(p.pid, signal.SIGKILL)
 
     # Filter out None values (uncompleted features)
     all_effects = [e.cpu() for e in all_effects if e is not None]

@@ -52,6 +52,7 @@ def gen(
                     top_k=50,
                     top_p=0.3,
                     verbose=False,
+                    stop_at_eos=False,
                 )
             generated_tokens.append(gen_batch)
     return torch.cat(generated_tokens, dim=0)
