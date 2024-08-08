@@ -95,8 +95,6 @@ def get_scale(
         if total_loss.item()/n_batches > target_loss:
             break
     scales = scales[:len(losses)]
-    print("scales", scales)
-    print("losses", losses)
 
     # linear interpolation
     x1, x2 = scales[-2], scales[-1]

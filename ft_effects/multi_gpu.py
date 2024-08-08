@@ -124,16 +124,14 @@ def main(features, save_dir):
             p.join()
 
     # Filter out None values (uncompleted features)
-    all_effects = [e for e in all_effects if e is not None]
-    all_used_features = [f for f in all_used_features if f is not None]
+    all_effects = [e.cpu() for e in all_effects if e is not None]
+    all_used_features = [f.cpu() for f in all_used_features if f is not None]
     
     # Convert lists to tensors
     all_effects = torch.stack(all_effects)
     all_used_features = torch.stack(all_used_features)
     
-    print(f"all_effects shape: {all_effects.shape}")
-    print(f"all_used_features shape: {all_used_features.shape}")
-    
+    print("Saving results...")
     # Save results
     torch.save(all_effects, os.path.join(save_dir, "all_effects.pt"))
     torch.save(all_used_features, os.path.join(save_dir, "used_features.pt"))
