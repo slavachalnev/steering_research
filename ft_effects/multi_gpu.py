@@ -2,6 +2,7 @@ import os
 import sys
 sys.path.append(os.path.abspath('..'))
 import signal
+import resource
 from ft_effects.utils import gen, get_feature_acts, get_scale
 
 from transformer_lens import utils as tutils
@@ -144,6 +145,9 @@ def main(features, save_dir):
     torch.save(all_used_features, os.path.join(save_dir, "used_features.pt"))
 
 if __name__ == "__main__":
+    rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
+    resource.setrlimit(resource.RLIMIT_NOFILE, (4096, rlimit[1]))
+
     path_to_params = hf_hub_download(
     repo_id="google/gemma-scope-2b-pt-res",
     filename="layer_12/width_16k/average_l0_82/params.npz",
