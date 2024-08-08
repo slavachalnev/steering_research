@@ -174,9 +174,9 @@ def all_effects(features, save_to: str, scale=None, n_base_batches=10):
             f.write(f"used_features shape: {used_features.shape}\n")
 
 
-# save_dir = "effects/G2_2B_L12/16k_from_0"
-# os.makedirs(save_dir)
-# all_effects(sae.W_dec[:20], save_dir, n_base_batches=2) ###
+save_dir = "effects/G2_2B_L12/16k_from_0"
+os.makedirs(save_dir)
+all_effects(sae.W_dec[:50], save_dir, n_base_batches=10) ###
 
 
 # save_dir = "effects/G2_2B_L12/65k_from_0"
@@ -185,15 +185,15 @@ def all_effects(features, save_to: str, scale=None, n_base_batches=10):
 
 
 
-### interpolation ###
-wedding = sae.W_dec[4230]
-serve_dish = sae.W_dec[1]
-interp = []
-for alpha in np.linspace(0, 1, 21):
-    interp.append(alpha * wedding + (1-alpha) * serve_dish)
-interp = torch.stack(interp)
-interp = interp / torch.norm(interp, dim=-1, keepdim=True)
-save_dir = "effects/G2_2B_L12/interp_wedding_dish"
-os.makedirs(save_dir)
-all_effects(interp, save_dir)
+# ### interpolation ###
+# wedding = sae.W_dec[4230]
+# serve_dish = sae.W_dec[1]
+# interp = []
+# for alpha in np.linspace(0, 1, 21):
+#     interp.append(alpha * wedding + (1-alpha) * serve_dish)
+# interp = torch.stack(interp)
+# interp = interp / torch.norm(interp, dim=-1, keepdim=True)
+# save_dir = "effects/G2_2B_L12/interp_wedding_dish"
+# os.makedirs(save_dir)
+# all_effects(interp, save_dir)
 
