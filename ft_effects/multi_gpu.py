@@ -2,7 +2,6 @@ import os
 import sys
 sys.path.append(os.path.abspath('..'))
 import signal
-import resource
 from ft_effects.utils import gen, get_feature_acts, get_scale
 
 from transformer_lens import utils as tutils
@@ -48,36 +47,44 @@ def load_model_and_sae(rank):
 
 
 @torch.no_grad()
-def worker(rank, world_size, task_queue, result_queue, features, scale=None):
+def worker(rank, world_size, task_queue, features, save_dir, scale=None):
     setup(rank, world_size)
     model, sae, loader = load_model_and_sae(rank)
 
     baseline_samples = gen(model=model, n_batches=10)
     baseline_dist = get_feature_acts(model=model, sae=sae, tokens=baseline_samples, batch_size=64)
-    
-    while True:
-        try:
-            feature_index = task_queue.get(timeout=1)  # 1 second timeout
-        except Empty:
-            break
-        
-        feature = features[feature_index]
-        if scale is None:
-            opt_scale = get_scale(model=model,
-                                  steer=feature.to(sae.W_dec.device),
-                                  loader=loader,
-                                  scales=list(range(0, 220, 20)),
-                                  )
-        else:
-            opt_scale = scale
-        used_feature = feature * opt_scale
-        used_feature = used_feature.to(sae.W_dec.device)
 
-        ft_samples = gen(model=model, steer=used_feature)
-        ft_dist = get_feature_acts(model=model, sae=sae, tokens=ft_samples, batch_size=64)
-        diff = ft_dist - baseline_dist
-        result_queue.put((diff.cpu(), used_feature, feature_index))
-    cleanup()
+    results = []
+    try:
+        while True:
+            try:
+                feature_index = task_queue.get(timeout=1)  # 1 second timeout
+            except Empty:
+                break
+            feature = features[feature_index]
+            if scale is None:
+                opt_scale = get_scale(model=model,
+                                      steer=feature.to(sae.W_dec.device),
+                                      loader=loader,
+                                      scales=list(range(0, 220, 20)),
+                                      )
+            else:
+                opt_scale = scale
+            used_feature = feature * opt_scale
+            used_feature = used_feature.to(sae.W_dec.device)
+
+            ft_samples = gen(model=model, steer=used_feature)
+            ft_dist = get_feature_acts(model=model, sae=sae, tokens=ft_samples, batch_size=64)
+            diff = ft_dist - baseline_dist
+            results.append({
+                'effect': diff.cpu(),
+                'used_feature': used_feature.cpu(),
+                'feature_index': feature_index
+            })
+            print(f"processed {feature_index}")
+    finally:
+        torch.save(results, os.path.join(save_dir, f"partial_results_rank_{rank}.pt"))
+        cleanup()
 
 @torch.no_grad()
 def main(features, save_dir):
@@ -87,67 +94,62 @@ def main(features, save_dir):
     mp.set_start_method('spawn')
     
     task_queue = mp.Queue()
-    result_queue = mp.Queue()
     
     # Populate task queue
     for i in range(num_features):
         task_queue.put(i)
     
     processes = []
-    for rank in range(world_size):
-        p = mp.Process(target=worker, args=(rank, world_size, task_queue, result_queue, features.detach()))
-        p.start()
-        processes.append(p)
-    
-    # Initialize result containers
-    all_effects = [None] * num_features
-    all_used_features = [None] * num_features
-    
-    # Collect results as they become available
     try:
-        completed_features = 0
-        while completed_features < num_features:
-            effect, used_feature, index = result_queue.get()
-            all_effects[index] = effect
-            all_used_features[index] = used_feature
-            completed_features += 1
-            print(f"Completed feature {index+1}/{num_features}")
-    except KeyboardInterrupt:
-        print("\nKeyboard interrupt detected. Saving partial results...")
-    except Empty:
-        print("\nAll tasks completed.")
-    finally:
-        # Terminate all processes
-        for p in processes:
-            p.terminate()
+        for rank in range(world_size):
+            p = mp.Process(
+                target=worker,
+                args=(rank, world_size, task_queue, features.detach().clone(), save_dir))
+            p.start()
+            processes.append(p)
         
         # Wait for all processes to finish
         for p in processes:
-            p.join(timeout=5)  # Wait up to 5 seconds for each process to join
+            p.join()
 
-        # Force kill any processes that didn't join in time
+    except KeyboardInterrupt:
+        print("Main process interrupted. Waiting for workers to save and exit...")
+        for p in processes:
+            p.join(timeout=5)
+        print("All workers have exited.")
+    finally:
+        # Force terminate any remaining processes
         for p in processes:
             if p.is_alive():
                 print(f"Force terminating process {p.pid}")
-                os.kill(p.pid, signal.SIGKILL)
+                os.kill(p.pid, signal.SIGTERM)
+        task_queue.close()
 
-    # Filter out None values (uncompleted features)
-    all_effects = [e.cpu() for e in all_effects if e is not None]
-    all_used_features = [f.cpu() for f in all_used_features if f is not None]
-    
+    # Collect and combine partial results
+    all_results = []
+    for rank in range(world_size):
+        partial_results = torch.load(os.path.join(save_dir, f"partial_results_rank_{rank}.pt"))
+        all_results.extend(partial_results)
+        os.remove(os.path.join(save_dir, f"partial_results_rank_{rank}.pt"))
+
+    # Sort results by feature index
+    all_results.sort(key=lambda x: x['feature_index'])
+
+    # Separate effects and used features
+    all_effects = [r['effect'] for r in all_results]
+    all_used_features = [r['used_feature'] for r in all_results]
+
     # Convert lists to tensors
     all_effects = torch.stack(all_effects)
     all_used_features = torch.stack(all_used_features)
-    
-    print("Saving results...")
-    # Save results
+
+    print("Saving final results...")
+    # Save final results
     torch.save(all_effects, os.path.join(save_dir, "all_effects.pt"))
     torch.save(all_used_features, os.path.join(save_dir, "used_features.pt"))
+    print('done save')
 
 if __name__ == "__main__":
-    rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
-    resource.setrlimit(resource.RLIMIT_NOFILE, (4096, rlimit[1]))
-
     path_to_params = hf_hub_download(
     repo_id="google/gemma-scope-2b-pt-res",
     filename="layer_12/width_16k/average_l0_82/params.npz",
@@ -161,5 +163,3 @@ if __name__ == "__main__":
     save_dir = "effects/G2_2B_L12/multi_16k_from_0"
     os.makedirs(save_dir)
     main(sae.W_dec, save_dir)
-
-
