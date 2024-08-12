@@ -12,11 +12,14 @@ import plotly.express as px
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
+from functools import partial
+
 
 from transformer_lens import HookedTransformer
 from huggingface_hub import hf_hub_download
 
 from steering.sae import JumpReLUSAE
+from steering.patch import patch_resid
 # %%
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -27,6 +30,7 @@ paths = [
     "effects/G2_2B_L12/65k_from_20k",
     "effects/G2_2B_L12/65k_from_30k",
     "effects/G2_2B_L12/65k_from_40k",
+    # "effects/G2_2B_L12/multi_16k_from_0",
 ]
 
 features = []
@@ -38,6 +42,8 @@ for path in paths:
 
 features = torch.cat(features)
 effects = torch.cat(effects)
+print(features.shape)
+print(effects.shape)
 
 val_features = features[-100:]
 val_effects = effects[-100:]
@@ -71,13 +77,28 @@ sae = get_sae()
 class LinearAdapter(nn.Module):
     def __init__(self, sae):
         super().__init__()
-        d_model, d_sae = sae.W_enc.shape 
+        self.d_model, self.d_sae = sae.W_enc.shape 
         # self.W = nn.Parameter(sae.W_enc.detach().clone())
-        self.W = nn.Parameter(nn.init.kaiming_uniform_(torch.empty(d_model, d_sae)))
-        self.b = nn.Parameter(torch.zeros(d_sae))
+        self.W = nn.Parameter(nn.init.kaiming_uniform_(torch.empty(self.d_model, self.d_sae)))
+        self.b = nn.Parameter(torch.zeros(self.d_sae))
 
     def forward(self, x):
         return x @ self.W + self.b
+
+class NonLinearAdapter(nn.Module):
+    def __init__(self, sae):
+        super().__init__()
+        self.d_model, self.d_sae = sae.W_enc.shape 
+        self.W1 = nn.Parameter(nn.init.kaiming_uniform_(torch.empty(self.d_model, self.d_sae)))
+        self.b1 = nn.Parameter(torch.zeros(self.d_sae))
+        self.W2 = nn.Parameter(nn.init.kaiming_uniform_(torch.empty(self.d_sae, self.d_sae)))
+        self.b2 = nn.Parameter(torch.zeros(self.d_sae))
+
+    def forward(self, x):
+        x = x @ self.W1 + self.b1
+        x = F.relu(x)
+        x = x @ self.W2 + self.b2
+        return x
 
 
 # %%
@@ -132,13 +153,58 @@ def train(num_epochs, lr=1e-4):
 
 # %%
 adapter = LinearAdapter(sae)
+# adapter = NonLinearAdapter(sae)
 adapter.to(device)
-train(10)
+train(20, lr=2e-4)
 # %%
 # save the adapter
 torch.save(adapter.state_dict(), "adapter.pt")
 # %%
 
+
+def find_optimal_steer(target, d_model):
+    steer = torch.zeros(d_model, requires_grad=True, device=device)
+    steer = steer.to(device)
+    target = target.to(device)
+    optim = torch.optim.Adam([steer], lr=1e-4)
+    for step in range(10000):
+        optim.zero_grad()
+        pred = adapter(steer)
+        loss = F.mse_loss(pred, target)
+        loss.backward()
+        optim.step()
+        if step % 100 == 0:
+            print(loss.item())
+    return steer.detach()
+
+target = torch.zeros(sae.W_enc.shape[1])
+target[14455] = 5 # london
+target[3931] = 1 # uk
+
+optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0])
+
+with torch.no_grad():
+    optimal_steer = optimal_steer / torch.norm(optimal_steer)
+    
+# %%
+
+# %%
+####### steer ######
+
 model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device)
 hp = "blocks.12.hook_resid_post"
 
+def gen(prompt, steer, scale):
+    toks = model.to_tokens(prompt, prepend_bos=True)
+    toks = toks.expand(10, -1)
+    with model.hooks([(hp, partial(patch_resid, steering=steer, scale=scale))]):
+        gen_toks = model.generate(toks, max_new_tokens=30)
+    return model.to_string(gen_toks)
+
+# %%
+
+
+gen("I think", optimal_steer, 120)
+
+
+# %%
