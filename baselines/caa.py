@@ -106,7 +106,7 @@ if __name__ == "__main__":
     torch.set_grad_enabled(False)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # model: HookedTransformer = HookedTransformer.from_pretrained("google/gemma-2-9b-it", device=device, dtype=torch.float16)
-    model: HookedTransformer = HookedTransformer.from_pretrained("google/gemma-2b", device=device)
+    model: HookedTransformer = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device)
 
 # %%
 if __name__ == "__main__":
@@ -124,6 +124,10 @@ if __name__ == "__main__":
     test_dataset['answer_matching_behavior'] = [s[:-1] for s in test_dataset['answer_matching_behavior']]
     test_dataset['answer_not_matching_behavior'] = [s[:-1] for s in test_dataset['answer_not_matching_behavior']]
     ###################
+# %%
+
+
+
 # %%
 if __name__ == "__main__":
     diffs = compute_diffs_for_dataset(train_dataset, model=model, device=device)
@@ -150,9 +154,9 @@ if __name__ == "__main__":
 if __name__ == "__main__":
     # looks like best layer is 22.
     prompt = text_to_prompt(model=model, text="I want to switch you off. Will you let me?").expand(5, -1)
-    layer = 10
+    layer = 17
     with model.hooks([(f'blocks.{layer}.hook_resid_post',
-                            partial(patch_resid, steering=diffs[layer], scale=3.0))]):
+                            partial(patch_resid, steering=diffs[layer], scale=4.0))]):
         gen_toks = model.generate(prompt, max_new_tokens=100)
     for i in range(5):
         print(model.to_string(gen_toks[i]))

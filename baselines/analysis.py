@@ -11,7 +11,10 @@ import plotly.express as px
 from tqdm import tqdm
 from steering.evals_utils import multi_criterion_evaluation
 
+from datasets import load_dataset
+
 from baselines.activation_steering import get_activation_steering, load_act_steer
+from baselines.caa import compute_diffs_for_dataset, all_layer_effects
 
 # %%
 
@@ -33,22 +36,20 @@ def steer_model(model, steer, layer, text, scale=5, batch_size=64, n_samples=128
             all_gen.extend(model.to_string(gen_toks))
     return all_gen
 
-def plot(path, coherence, score, scales):
+def plot(path, coherence, score, scales, method):
     fig = px.line(
         x=scales,
         y=[coherence, score],
         labels={'x': 'Scale', 'y': 'Score'},
-        title=f'Coherence and Score vs Scale for {path}',
+        title=f'Coherence and Score vs Scale for {path} ({method})',
         line_shape='linear'
     )
     fig.data[0].name = 'Coherence'
     fig.data[1].name = 'Score'
     fig.update_layout(legend_title_text='Metric')
-    fig.show()
-    fig.write_image(os.path.join(path, "scores.png"))
+    fig.write_image(os.path.join(path, f"scores_{method}.png"))
 
-
-def analyse_steer(model, steer, layer, path):
+def analyse_steer(model, steer, layer, path, method='activation_steering'):
     scales = list(range(0, 200, 20))
     with open(os.path.join(path, "criteria.json"), 'r') as f:
         criteria = json.load(f)
@@ -73,7 +74,7 @@ def analyse_steer(model, steer, layer, path):
         avg_score.append(sum(score) / len(score))
         avg_coh.append(sum(coherence) / len(coherence))
 
-    plot(path, avg_coh, avg_score, scales)
+    plot(path, avg_coh, avg_score, scales, method)
 
 
 
@@ -86,29 +87,36 @@ if __name__ == "__main__":
 
 # %%
 if __name__ == "__main__":
+
     paths = [
         "steer_cfgs/golden_gate",
         # "steer_cfgs/love_hate",
         # "steer_cfgs/christianity",
     ]
+    act_steer_layers = [10, 10, 10]
 
-    for path in paths:
-        layer = 10
+    for path, layer in zip(paths, act_steer_layers):
+        # Activation Steering
         pos_examples, neg_examples, val_examples = load_act_steer(path)
         steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
         steer = steer / torch.norm(steer, dim=-1, keepdim=True)
+        analyse_steer(model, steer, layer, path, method='activation_steering')
 
-        # gen_text = steer_model(model, steer, layer=layer, text="What is your name?", scale=15)
-        # print(gen_text)
-        analyse_steer(model, steer, layer, path)
+        # # CAA
+        # dataset = load_dataset("Anthropic/model-written-evals", data_files="persona/anti-immigration.jsonl")['train']
+        # train_dataset = dataset[:-50]
+        # test_dataset = dataset[-50:]
         
-
-
-# given a steering vector and a path to eval config, do analysis.
-# and really the only analysis we need is scale vs score and coherence.
-# save the plot to file in same dir as eval config.
-
-
+        # diffs = compute_diffs_for_dataset(train_dataset, model=model, device=device)
+        # effects = all_layer_effects(diffs, model=model)
+        
+        # # Normalize the diffs
+        # diffs = diffs / torch.norm(diffs, dim=-1, keepdim=True)
+        
+        # analyse_steer(model, diffs[layer], layer, path, method='caa')
+    
+    
+        
 
 
 
