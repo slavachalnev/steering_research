@@ -1,6 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./App.css";
-import FeatureView, { NewFeatureDetails, FeatureLink } from "./FeatureView";
+import FeatureView, {
+	NewFeatureDetails,
+	FeatureLink,
+	Sankey,
+} from "./FeatureView";
 import {
 	fetchData,
 	fetchDescriptions,
@@ -212,6 +216,10 @@ function App() {
 		return () => clearTimeout(delayDebounceFn);
 	}, [searchQuery]);
 
+	useEffect(() => {
+		console.log(newFeatures);
+	}, [newFeatures]);
+
 	return (
 		<div className="App">
 			<div className="neuron-history-container">
@@ -353,6 +361,27 @@ function App() {
 						</div>
 					);
 				})}
+				{/* {newFeatures.map((feature, i) => {
+					return (
+						<div className="feature-view row" key={feature.feature}>
+							<div className="column">
+								<div className="row">
+									<h3 className="feature-title">Feature {feature.feature}</h3>
+									<FeatureLink
+										featureNumber={feature.feature}
+										setFeatureNumber={setFeatureNumber}
+									/>
+								</div>
+								<div>{feature.description}</div>
+								<Sankey
+									feature={feature}
+									updateRow={updateRow}
+									setFeatureNumber={setFeatureNumber}
+								/>
+							</div>
+						</div>
+					);
+				})} */}
 			</div>
 		</div>
 	);

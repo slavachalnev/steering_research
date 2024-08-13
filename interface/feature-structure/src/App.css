@@ -1,0 +1,8 @@
+.row {
+    width: 100vw;
+	display: flex;
+	flex-direction: row;
+	overflow-x: auto;
+	overflow: scroll;
+	padding: 10px;
+}

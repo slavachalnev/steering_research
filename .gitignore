@@ -172,3 +172,5 @@ optim/checkpoints
 wandb/
 
 *.pt
+*.npy
+*.json

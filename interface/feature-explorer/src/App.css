@@ -178,6 +178,29 @@
     cursor: pointer;
 }
 
+/* Sankey */
+
+.sankey-element {
+    background-color: black;
+    min-width: 30px;
+    max-width: 30px;
+    margin-top: 10px;
+    margin-right: 330px;
+    display: flex;
+    align-items: center;
+    position:relative;
+}
+
+.sankey-element-text {
+    position: absolute;
+    left: 40px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: auto;
+    white-space: nowrap;
+}
+
+
 /* Feature View */
 
 .feature-title { 
