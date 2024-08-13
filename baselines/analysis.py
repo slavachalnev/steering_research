@@ -10,13 +10,37 @@ import json
 import plotly.express as px
 from tqdm import tqdm
 from steering.evals_utils import multi_criterion_evaluation
+from steering.utils import normalise_decoder
 
 from datasets import load_dataset
 
 from baselines.activation_steering import get_activation_steering, load_act_steer
 from baselines.caa import compute_diffs_for_dataset, all_layer_effects
+from sae_lens import SAE
+
 
 # %%
+
+def load_sae_steer(path):
+    with open(os.path.join(path, "sae_steer.json"), 'r') as f:
+        steer = json.load(f)
+    # steer is {
+    #    "sae": "gemma-2b-res-jb",
+    #    "layer": 6,
+    #    "hp": "blocks.6.hook_resid_post",
+    #    "features": [[155, .5], [23333, .5]] }
+    sae, _, _ = SAE.from_pretrained(
+        release = steer['sae'],
+        sae_id = steer['hp'],
+        device = 'cpu')
+    normalise_decoder(sae)
+    vectors = []
+    for ft_id, ft_scale in steer['features']:
+        vectors.append(sae.W_dec[ft_id] * ft_scale)
+    vectors = torch.stack(vectors, dim=0)
+    vec = vectors.sum(dim=0)
+    vec = vec / torch.norm(vec, dim=-1, keepdim=True)
+    return vec, steer['hp'], steer['layer']
 
 def steer_model(model, steer, layer, text, scale=5, batch_size=64, n_samples=128):
     toks = model.to_tokens(text, prepend_bos=True)
@@ -78,7 +102,6 @@ def analyse_steer(model, steer, layer, path, method='activation_steering'):
 
 
 
-
 # %%
 if __name__ == "__main__":
     torch.set_grad_enabled(False)
@@ -89,18 +112,20 @@ if __name__ == "__main__":
 if __name__ == "__main__":
 
     paths = [
-        "steer_cfgs/golden_gate",
+        # "steer_cfgs/golden_gate",
         # "steer_cfgs/love_hate",
         # "steer_cfgs/christianity",
+        "steer_cfgs/london",
     ]
     act_steer_layers = [10, 10, 10]
 
     for path, layer in zip(paths, act_steer_layers):
-        # Activation Steering
-        pos_examples, neg_examples, val_examples = load_act_steer(path)
-        steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
-        steer = steer / torch.norm(steer, dim=-1, keepdim=True)
-        analyse_steer(model, steer, layer, path, method='activation_steering')
+        # # Activation Steering
+        # print("activation steering")
+        # pos_examples, neg_examples, val_examples = load_act_steer(path)
+        # steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
+        # steer = steer / torch.norm(steer, dim=-1, keepdim=True)
+        # analyse_steer(model, steer, layer, path, method='activation_steering')
 
         # # CAA
         # dataset = load_dataset("Anthropic/model-written-evals", data_files="persona/anti-immigration.jsonl")['train']
@@ -114,10 +139,14 @@ if __name__ == "__main__":
         # diffs = diffs / torch.norm(diffs, dim=-1, keepdim=True)
         
         # analyse_steer(model, diffs[layer], layer, path, method='caa')
-    
-    
-        
 
+        # sae steering
+        print("sae steering")
+        steer, hp, layer = load_sae_steer(path)
+        steer = steer.to(device)
+        analyse_steer(model, steer, layer, path, method='sae')
+    
+    
 
 
 # %%
