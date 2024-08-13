@@ -173,4 +173,3 @@ wandb/
 
 *.pt
 *.npy
-*.json

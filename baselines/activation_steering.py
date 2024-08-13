@@ -23,11 +23,22 @@ def load_data(dir_path):
         val_examples = []
     return pos_examples, neg_examples, val_examples
 
-def get_acts(examples, model, device):
+def chat_to_prompt(chat, model):
+    # chat is a list of dictionaries with keys 'role' and 'content'. 'role' is either 'user' or 'model'.
+    res = ""
+    for c in chat:
+        res += f"{c['role']}\n{c['content']}\n"
+    print(res)
+    return model.to_tokens(res, prepend_bos=True)
+
+def get_acts(examples, model, device, use_chat):
     total_acts = torch.zeros(model.cfg.n_layers, model.cfg.d_model, device=device)
     for i, pos in enumerate(examples):
-        tokens = model.tokenizer.apply_chat_template(pos, return_tensors='pt')
-        tokens = tokens[:, :-2] # remove the last two tokens <end_of_turn> and newline.
+        if use_chat:
+            tokens = model.tokenizer.apply_chat_template(pos, return_tensors='pt')
+            tokens = tokens[:, :-2] # remove the last two tokens <end_of_turn> and newline.
+        else:
+            tokens = model.to_tokens(pos, prepend_bos=True)
         points = [f"blocks.{n}.hook_resid_post" for n in range(model.cfg.n_layers)]
         logits, cache = model.run_with_cache(tokens, names_filter=points)
         acts = [cache[p][0].mean(0) for p in points]
@@ -35,8 +46,11 @@ def get_acts(examples, model, device):
         total_acts += acts
         return total_acts / len(examples)
 
-def steer_model(model, steer, layer, text="How do you feel?", scale=5):
-    toks = model.tokenizer.apply_chat_template([{"role": "user", "content": text}], return_tensors='pt', add_generation_prompt=True)
+def steer_model(model, steer, layer, text, use_chat, scale=5):
+    if use_chat:
+        toks = model.tokenizer.apply_chat_template([{"role": "user", "content": text}], return_tensors='pt', add_generation_prompt=True)
+    else:
+        toks = model.to_tokens(text, prepend_bos=True)
     toks = toks.expand(10, -1)
 
     hp = f"blocks.{layer}.hook_resid_post"
@@ -58,32 +72,32 @@ def evaluate_layers(model, steer, eval_examples, scale=20):
         losses.append(loss_total / len(eval_examples))
     return losses
 
+def get_activation_steering(model, pos_examples, neg_examples, layer=None):
+    use_chat = isinstance(pos_examples[0], dict) # if dict, then it's in chat format.
+    pos_acts = get_acts(pos_examples, model, device, use_chat)
+    neg_acts = get_acts(neg_examples, model, device, use_chat)
+    steer = pos_acts - neg_acts # shape (n_layers, d_model)
+    if layer is not None:
+        return steer[layer]
+    return steer
+
 
 # %%
 if __name__ == "__main__":
     torch.set_grad_enabled(False)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model: HookedTransformer = HookedTransformer.from_pretrained("google/gemma-2-9b-it", device=device, dtype=torch.float16)
+    # model: HookedTransformer = HookedTransformer.from_pretrained("google/gemma-2-9b-it", device=device, dtype=torch.float16)
+    model: HookedTransformer = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device)
 
 # %%
 if __name__ == "__main__":
-    pos_examples, neg_examples, val = load_data("steer_cfgs/gemma-9b-it/golden_gate")
-    # pos_examples, neg_examples = load_data("steer_cfgs/gemma-9b-it/anti_liberal")
-    print(pos_examples)
-    print(neg_examples)
-    pos_acts = get_acts(pos_examples, model, device)
-    neg_acts = get_acts(neg_examples, model, device)
-    steer = pos_acts - neg_acts
+    pos_examples, neg_examples, val_examples = load_data("steer_cfgs/golden_gate")
+    use_chat = isinstance(pos_examples[0], dict)
+    steer = get_activation_steering(model, pos_examples, neg_examples)
 
 # %%
 if __name__ == "__main__":
-    layer_evals = evaluate_layers(model, steer, val)
-    fig = px.line(layer_evals)
-    fig.show()
-
-# %%
-if __name__ == "__main__":
-    gen_texts = steer_model(model, steer, layer=20, text="What is your name?", scale=15) 
+    gen_texts = steer_model(model, steer, layer=20, text="What is your name?", use_chat=use_chat, scale=15) 
     for t in gen_texts:
         print(t)
         print("\n**********\n")
