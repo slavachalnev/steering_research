@@ -11,7 +11,7 @@ import plotly.express as px
 
 # %%
 
-def load_data(dir_path):
+def load_act_steer(dir_path):
     data_path = os.path.join(dir_path, "act_steer.json")
     with open(data_path, 'r') as f:
         data = json.load(f)
@@ -72,7 +72,7 @@ def evaluate_layers(model, steer, eval_examples, scale=20):
         losses.append(loss_total / len(eval_examples))
     return losses
 
-def get_activation_steering(model, pos_examples, neg_examples, layer=None):
+def get_activation_steering(model, pos_examples, neg_examples, device, layer=None):
     use_chat = isinstance(pos_examples[0], dict) # if dict, then it's in chat format.
     pos_acts = get_acts(pos_examples, model, device, use_chat)
     neg_acts = get_acts(neg_examples, model, device, use_chat)
@@ -91,9 +91,9 @@ if __name__ == "__main__":
 
 # %%
 if __name__ == "__main__":
-    pos_examples, neg_examples, val_examples = load_data("steer_cfgs/golden_gate")
+    pos_examples, neg_examples, val_examples = load_act_steer("steer_cfgs/golden_gate")
     use_chat = isinstance(pos_examples[0], dict)
-    steer = get_activation_steering(model, pos_examples, neg_examples)
+    steer = get_activation_steering(model, pos_examples, neg_examples, device)
 
 # %%
 if __name__ == "__main__":
