@@ -8,6 +8,7 @@ from transformer_lens import HookedTransformer
 from functools import partial
 import json
 import plotly.express as px
+import plotly.graph_objects as go
 from tqdm import tqdm
 from steering.evals_utils import multi_criterion_evaluation
 from steering.utils import normalise_decoder
@@ -22,7 +23,7 @@ from sae_lens import SAE
 # %%
 
 def load_sae_steer(path):
-    with open(os.path.join(path, "sae_steer.json"), 'r') as f:
+    with open(os.path.join(path, "feature_steer.json"), 'r') as f:
         steer = json.load(f)
     # steer is {
     #    "sae": "gemma-2b-res-jb",
@@ -61,16 +62,25 @@ def steer_model(model, steer, layer, text, scale=5, batch_size=64, n_samples=128
     return all_gen
 
 def plot(path, coherence, score, scales, method):
-    fig = px.line(
-        x=scales,
-        y=[coherence, score],
-        labels={'x': 'Scale', 'y': 'Score'},
-        title=f'Coherence and Score vs Scale for {path} ({method})',
-        line_shape='linear'
+    # Calculate the product of coherence and score
+    product = [c * s for c, s in zip(coherence, score)]
+
+    fig = go.Figure()
+
+    # Add traces for coherence, score, and their product
+    fig.add_trace(go.Scatter(x=scales, y=coherence, mode='lines', name='Coherence'))
+    fig.add_trace(go.Scatter(x=scales, y=score, mode='lines', name='Score'))
+    fig.add_trace(go.Scatter(x=scales, y=product, mode='lines', name='Coherence * Score'))
+
+    # Update layout
+    fig.update_layout(
+        title=f'Coherence, Score, and Their Product vs Scale for {path} ({method})',
+        xaxis_title='Scale',
+        yaxis_title='Value',
+        legend_title='Metric'
     )
-    fig.data[0].name = 'Coherence'
-    fig.data[1].name = 'Score'
-    fig.update_layout(legend_title_text='Metric')
+
+    # Save the figure
     fig.write_image(os.path.join(path, f"scores_{method}.png"))
 
 def analyse_steer(model, steer, layer, path, method='activation_steering'):
@@ -112,20 +122,26 @@ if __name__ == "__main__":
 if __name__ == "__main__":
 
     paths = [
-        # "steer_cfgs/golden_gate",
-        # "steer_cfgs/love_hate",
-        # "steer_cfgs/christianity",
+        "steer_cfgs/anger",
+        "steer_cfgs/christian_evangelist",
+        "steer_cfgs/conspiracy",
+        "steer_cfgs/french",
+        "steer_cfgs/golden_gate",
         "steer_cfgs/london",
+        "steer_cfgs/love",
+        "steer_cfgs/praise",
+        "steer_cfgs/want_to_die",
+        "steer_cfgs/wedding",
     ]
-    act_steer_layers = [10, 10, 10]
+    act_steer_layers = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
 
     for path, layer in zip(paths, act_steer_layers):
-        # # Activation Steering
-        # print("activation steering")
-        # pos_examples, neg_examples, val_examples = load_act_steer(path)
-        # steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
-        # steer = steer / torch.norm(steer, dim=-1, keepdim=True)
-        # analyse_steer(model, steer, layer, path, method='activation_steering')
+        # Activation Steering
+        print("activation steering")
+        pos_examples, neg_examples, val_examples = load_act_steer(path)
+        steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
+        steer = steer / torch.norm(steer, dim=-1, keepdim=True)
+        analyse_steer(model, steer, layer, path, method='activation_steering')
 
         # # CAA
         # dataset = load_dataset("Anthropic/model-written-evals", data_files="persona/anti-immigration.jsonl")['train']
