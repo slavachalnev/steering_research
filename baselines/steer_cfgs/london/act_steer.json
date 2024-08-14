@@ -1,0 +1,27 @@
+{
+	"pos": [
+		"London landmarks",
+		"Thames river cruise",
+		"London Underground",
+		"Royal family in London",
+		"London's West End shows",
+		"London Bridge history",
+		"London Eye views",
+		"London museums tour",
+		"London parks and gardens",
+		"London's iconic red buses"
+	],
+	"neg": [
+		"Baking chocolate cake",
+		"Playing basketball",
+		"Writing science fiction",
+		"Studying quantum physics",
+		"Gardening vegetables",
+		"Composing classical music",
+		"Repairing bicycles",
+		"Knitting winter sweaters",
+		"Practicing yoga meditation",
+		"Brewing craft beer"
+	],
+	"layer": 6
+}
