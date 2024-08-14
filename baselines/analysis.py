@@ -32,7 +32,7 @@ def load_sae_steer(path):
     #    "features": [[155, .5], [23333, .5]] }
     sae, _, _ = SAE.from_pretrained(
         release = steer['sae'],
-        sae_id = steer['hp'],
+        sae_id = steer['layer'],
         device = 'cpu')
     normalise_decoder(sae)
     vectors = []
@@ -41,7 +41,7 @@ def load_sae_steer(path):
     vectors = torch.stack(vectors, dim=0)
     vec = vectors.sum(dim=0)
     vec = vec / torch.norm(vec, dim=-1, keepdim=True)
-    return vec, steer['hp'], steer['layer']
+    return vec, steer['layer'], 6 # hack # TODO: fix
 
 def steer_model(model, steer, layer, text, scale=5, batch_size=64, n_samples=128):
     toks = model.to_tokens(text, prepend_bos=True)
@@ -84,7 +84,7 @@ def plot(path, coherence, score, scales, method):
     fig.write_image(os.path.join(path, f"scores_{method}.png"))
 
 def analyse_steer(model, steer, layer, path, method='activation_steering'):
-    scales = list(range(0, 200, 20))
+    scales = list(range(0, 200, 10))
     with open(os.path.join(path, "criteria.json"), 'r') as f:
         criteria = json.load(f)
     with open(os.path.join(path, "prompts.json"), 'r') as f:
