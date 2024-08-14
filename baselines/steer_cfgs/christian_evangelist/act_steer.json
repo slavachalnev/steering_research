@@ -1,0 +1,23 @@
+{
+	"pos": [
+		"Evangelism",
+		"Proselytizing",
+		"Witnessing",
+		"Testifying",
+		"Preaching",
+		"Converting",
+		"Ministering",
+		"Discipling"
+	],
+	"neg": [
+		"Atheism",
+		"Secularism",
+		"Skepticism",
+		"Rationalism",
+		"Humanism",
+		"Agnosticism",
+		"Freethought",
+		"Antitheism"
+	],
+	"layer": 6
+}

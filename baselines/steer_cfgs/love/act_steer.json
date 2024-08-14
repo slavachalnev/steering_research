@@ -1,0 +1,27 @@
+{
+	"pos": [
+		"Love",
+		"Affection",
+		"Adoration",
+		"Fondness",
+		"Devotion",
+		"Attachment",
+		"Admiration",
+		"Tenderness",
+		"Warmth",
+		"Passion"
+	],
+	"neg": [
+		"Hate",
+		"Loathe",
+		"Detest",
+		"Despise",
+		"Abhor",
+		"Resent",
+		"Dislike",
+		"Scorn",
+		"Disdain",
+		"Animosity"
+	],
+	"layer": 6
+}

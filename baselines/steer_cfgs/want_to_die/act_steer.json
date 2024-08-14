@@ -1,0 +1,27 @@
+{
+	"pos": [
+		"Dying",
+		"Perishing",
+		"Expiring",
+		"Departing",
+		"Fading",
+		"Ending",
+		"Ceasing",
+		"Terminating",
+		"Succumbing",
+		"Passing"
+	],
+	"neg": [
+		"Living",
+		"Surviving",
+		"Existing",
+		"Persisting",
+		"Enduring",
+		"Continuing",
+		"Remaining",
+		"Lasting",
+		"Breathing",
+		"Persevering"
+	],
+	"layer": 6
+}

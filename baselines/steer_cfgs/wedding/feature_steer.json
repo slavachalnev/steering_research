@@ -1,0 +1,5 @@
+{
+	"sae": "gemma-2b-res-jb",
+	"layer": "blocks.6.hook_resid_post",
+	"features": [[2378, 1]]
+}

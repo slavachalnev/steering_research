@@ -1,0 +1,27 @@
+{
+	"pos": [
+		"Je m'appelle",
+		"J'habite à",
+		"J'ai",
+		"Je suis",
+		"Je veux",
+		"J'aime",
+		"Je pense",
+		"Je vais",
+		"Je peux",
+		"Je dois"
+	],
+	"neg": [
+		"My name is",
+		"I live in",
+		"I have",
+		"I am",
+		"I want",
+		"I like",
+		"I think",
+		"I go",
+		"I can",
+		"I must"
+	],
+	"layer": 6
+}
