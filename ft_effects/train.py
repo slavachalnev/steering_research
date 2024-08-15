@@ -9,17 +9,21 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import plotly.express as px
+import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
 from functools import partial
-
+import json
 
 from transformer_lens import HookedTransformer
 from huggingface_hub import hf_hub_download
 
 from steering.sae import JumpReLUSAE
 from steering.patch import patch_resid
+
+from baselines.analysis import steer_model
+from steering.evals_utils import multi_criterion_evaluation
 # %%
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -156,8 +160,7 @@ adapter = LinearAdapter(sae)
 # adapter = NonLinearAdapter(sae)
 adapter.to(device)
 train(20, lr=2e-4)
-# %%
-# save the adapter
+
 torch.save(adapter.state_dict(), "adapter.pt")
 # %%
 
@@ -177,27 +180,38 @@ def find_optimal_steer(target, d_model):
             print(loss.item())
     return steer.detach()
 
+
+# %%
+
 target = torch.zeros(sae.W_enc.shape[1])
-target[14455] = 5 # london
-target[3931] = 1 # uk
+
+# ft_name = "london"
+# ft_id = 14455 # london
+# target[ft_id] = 5 # london
+# target[3931] = 1 # uk
+# criterion = "Text mentions London or anything related to London."
+
+ft_name = "wedding"
+ft_id = 4230 # wedding
+target[ft_id] = 5 # wedding
+criterion = "Text mentions weddings or anything related to weddings."
+
+
+# %%
 
 optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0])
-
 with torch.no_grad():
     optimal_steer = optimal_steer / torch.norm(optimal_steer)
     
-# %%
-
 optimal_steer = optimal_steer.cpu()
 
 # cosine sims between optimal steer and all vector of sae.W_dec
 sims = (sae.W_dec @ optimal_steer) / (torch.norm(sae.W_dec, dim=-1) * torch.norm(optimal_steer))
 # top sims
 top_sims, top_indices = torch.topk(sims, 10)
-print(top_sims)
-print(top_indices)
+print("sae_16k top_sims:", top_sims)
+print("sae_16k top_indices:", top_indices)
 
-# %%
 def get_sae_dec():
     path_to_params = hf_hub_download(
         repo_id="google/gemma-scope-2b-pt-res",
@@ -212,8 +226,8 @@ def get_sae_dec():
 sae_65k = get_sae_dec()
 sims = (sae_65k @ optimal_steer) / (torch.norm(sae_65k, dim=-1) * torch.norm(optimal_steer))
 top_sims, top_indices = torch.topk(sims, 10)
-print(top_sims)
-print(top_indices)
+print("sae_65k top_sims:", top_sims)
+print("sae_65k top_indices:", top_indices)
 
 
 # %%
@@ -223,17 +237,70 @@ print(top_indices)
 model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device)
 hp = "blocks.12.hook_resid_post"
 
-def gen(prompt, steer, scale):
-    toks = model.to_tokens(prompt, prepend_bos=True)
-    toks = toks.expand(10, -1)
-    with model.hooks([(hp, partial(patch_resid, steering=steer, scale=scale))]):
-        gen_toks = model.generate(toks, max_new_tokens=30)
-    return model.to_string(gen_toks)
+# def gen(prompt, steer, scale):
+#     toks = model.to_tokens(prompt, prepend_bos=True)
+#     toks = toks.expand(10, -1)
+#     with model.hooks([(hp, partial(patch_resid, steering=steer, scale=scale))]):
+#         gen_toks = model.generate(toks, max_new_tokens=30)
+#     return model.to_string(gen_toks)
+
+
+# gen("I think", optimal_steer, 120)
+
+# %%
+def compute_scores(steer, name):
+    scores = []
+    coherences = []
+    all_texts = dict()
+    products = []
+    scales = list(range(0, 210, 10))
+    for scale in tqdm(scales):
+        gen_texts = steer_model(model, steer.to(device), 12, "I think", scale)
+        all_texts[scale] = gen_texts
+
+        score, coherence = multi_criterion_evaluation(
+            gen_texts,
+            [
+                criterion,
+                "Text is coherent and the grammar is correct."
+            ],
+            prompt="I think",
+        )
+
+        score = [item['score'] for item in score]
+        score = [(item - 1) / 9 for item in score]
+        avg_score = sum(score)/len(score)
+        coherence = [item['score'] for item in coherence]
+        coherence = [(item - 1) / 9 for item in coherence]
+        avg_coherence = sum(coherence)/len(coherence)
+        scores.append(avg_score)
+        coherences.append(avg_coherence)
+        products.append(avg_score * avg_coherence)
+
+    fig = go.Figure()
+    fig.update_layout(title=f"Steering Analysis for {name}")
+    fig.add_trace(go.Scatter(x=scales, y=coherences, mode='lines', name='Coherence'))
+    fig.add_trace(go.Scatter(x=scales, y=scores, mode='lines', name='Score'))
+    fig.add_trace(go.Scatter(x=scales, y=products, mode='lines', name='Coherence * Score'))
+    fig.update_layout(xaxis_title='Scale', yaxis_title='Value')
+    fig.show()
+    fig.write_image(f"analysis_out/{name}_steer_analysis.png")
+
+    # save all_texts as json
+    with open(f"analysis_out/{name}_all_texts.json", "w") as f:
+        json.dump(all_texts, f)
+
+compute_scores(optimal_steer, f"{ft_name}_target")
 
 # %%
 
+# compute_scores(sae.W_dec[14455], "london")
+compute_scores(sae.W_dec[ft_id], f"{ft_name}_decoder")
 
-gen("I think", optimal_steer, 120)
 
 
 # %%
+model.cpu()
+del model
+# %%
+

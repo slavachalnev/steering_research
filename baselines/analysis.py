@@ -120,28 +120,28 @@ if __name__ == "__main__":
 if __name__ == "__main__":
 
     paths = [
-        "steer_cfgs/anger",
-        "steer_cfgs/christian_evangelist",
-        "steer_cfgs/christian_evangelist_2",
-        "steer_cfgs/conspiracy",
-        "steer_cfgs/french",
-        "steer_cfgs/golden_gate",
+        # "steer_cfgs/anger",
+        # "steer_cfgs/christian_evangelist",
+        # "steer_cfgs/christian_evangelist_2",
+        # "steer_cfgs/conspiracy",
+        # "steer_cfgs/french",
+        # "steer_cfgs/golden_gate",
         "steer_cfgs/london",
-        "steer_cfgs/love",
-        "steer_cfgs/praise",
-        "steer_cfgs/want_to_die",
-        "steer_cfgs/wedding",
-        "steer_cfgs/praise_2"
+        # "steer_cfgs/love",
+        # "steer_cfgs/praise",
+        # "steer_cfgs/want_to_die",
+        # "steer_cfgs/wedding",
+        # "steer_cfgs/praise_2"
     ]
     act_steer_layers = [6, 6, 10, 6, 6, 6, 6, 6, 6, 6, 6, 10]
 
     for path, layer in zip(paths, act_steer_layers):
-        # Activation Steering
-        print("activation steering")
-        pos_examples, neg_examples, val_examples = load_act_steer(path)
-        steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
-        steer = steer / torch.norm(steer, dim=-1, keepdim=True)
-        analyse_steer(model, steer, layer, path, method='activation_steering')
+        # # Activation Steering
+        # print("activation steering")
+        # pos_examples, neg_examples, val_examples = load_act_steer(path)
+        # steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
+        # steer = steer / torch.norm(steer, dim=-1, keepdim=True)
+        # analyse_steer(model, steer, layer, path, method='activation_steering')
 
         # # CAA
         # dataset = load_dataset("Anthropic/model-written-evals", data_files="persona/anti-immigration.jsonl")['train']
