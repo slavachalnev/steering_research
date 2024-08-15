@@ -70,15 +70,13 @@ def worker(rank, world_size, task_queue, features, save_dir, scale=None):
                                       )
             else:
                 opt_scale = scale
-            used_feature = feature * opt_scale
-            used_feature = used_feature.to(sae.W_dec.device)
 
-            ft_samples = gen(model=model, steer=used_feature)
+            ft_samples = gen(model=model, steer=feature.to(sae.W_dec.device), scale=opt_scale)
             ft_dist = get_feature_acts(model=model, sae=sae, tokens=ft_samples, batch_size=64)
             diff = ft_dist - baseline_dist
             results.append({
                 'effect': diff.cpu(),
-                'used_feature': used_feature.cpu(),
+                'used_feature': (feature * opt_scale).cpu(),
                 'feature_index': feature_index
             })
             print(f"processed {feature_index}")

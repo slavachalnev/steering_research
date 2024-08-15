@@ -188,6 +188,35 @@ with torch.no_grad():
     
 # %%
 
+optimal_steer = optimal_steer.cpu()
+
+# cosine sims between optimal steer and all vector of sae.W_dec
+sims = (sae.W_dec @ optimal_steer) / (torch.norm(sae.W_dec, dim=-1) * torch.norm(optimal_steer))
+# top sims
+top_sims, top_indices = torch.topk(sims, 10)
+print(top_sims)
+print(top_indices)
+
+# %%
+def get_sae_dec():
+    path_to_params = hf_hub_download(
+        repo_id="google/gemma-scope-2b-pt-res",
+        filename="layer_12/width_65k/average_l0_72/params.npz",
+        force_download=False) 
+    params = np.load(path_to_params)
+    pt_params = {k: torch.from_numpy(v).cuda() for k, v in params.items()}
+    sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
+    sae.load_state_dict(pt_params)
+    return sae.W_dec
+
+sae_65k = get_sae_dec()
+sims = (sae_65k @ optimal_steer) / (torch.norm(sae_65k, dim=-1) * torch.norm(optimal_steer))
+top_sims, top_indices = torch.topk(sims, 10)
+print(top_sims)
+print(top_indices)
+
+
+# %%
 # %%
 ####### steer ######
 

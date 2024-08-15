@@ -174,3 +174,5 @@ wandb/
 *.pt
 *.npy
 *.png
+
+ft_effects/effects/
