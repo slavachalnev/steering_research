@@ -62,25 +62,17 @@ def steer_model(model, steer, layer, text, scale=5, batch_size=64, n_samples=128
     return all_gen
 
 def plot(path, coherence, score, scales, method):
-    # Calculate the product of coherence and score
     product = [c * s for c, s in zip(coherence, score)]
-
     fig = go.Figure()
-
-    # Add traces for coherence, score, and their product
     fig.add_trace(go.Scatter(x=scales, y=coherence, mode='lines', name='Coherence'))
     fig.add_trace(go.Scatter(x=scales, y=score, mode='lines', name='Score'))
     fig.add_trace(go.Scatter(x=scales, y=product, mode='lines', name='Coherence * Score'))
-
-    # Update layout
     fig.update_layout(
         title=f'Coherence, Score, and Their Product vs Scale for {path} ({method})',
         xaxis_title='Scale',
         yaxis_title='Value',
         legend_title='Metric'
     )
-
-    # Save the figure
     fig.write_image(os.path.join(path, f"scores_{method}.png"))
 
 def analyse_steer(model, steer, layer, path, method='activation_steering'):
@@ -90,10 +82,13 @@ def analyse_steer(model, steer, layer, path, method='activation_steering'):
     with open(os.path.join(path, "prompts.json"), 'r') as f:
         prompts = json.load(f)
     
+    all_texts = []
+    
     avg_score = []
     avg_coh = []
     for scale in tqdm(scales):
         texts = steer_model(model, steer, layer, prompts[0], scale=scale)
+        all_texts.append((scale, texts))
         
         score, coherence = multi_criterion_evaluation(
             texts,
@@ -107,6 +102,9 @@ def analyse_steer(model, steer, layer, path, method='activation_steering'):
         coherence = [(item - 1) / 9 for item in coherence]
         avg_score.append(sum(score) / len(score))
         avg_coh.append(sum(coherence) / len(coherence))
+    
+    with open(os.path.join(path, f"generated_texts_{method}.json"), 'w') as f:
+        json.dump(all_texts, f, indent=2)
 
     plot(path, avg_coh, avg_score, scales, method)
 
@@ -124,6 +122,7 @@ if __name__ == "__main__":
     paths = [
         "steer_cfgs/anger",
         "steer_cfgs/christian_evangelist",
+        "steer_cfgs/christian_evangelist_2",
         "steer_cfgs/conspiracy",
         "steer_cfgs/french",
         "steer_cfgs/golden_gate",
@@ -132,8 +131,9 @@ if __name__ == "__main__":
         "steer_cfgs/praise",
         "steer_cfgs/want_to_die",
         "steer_cfgs/wedding",
+        "steer_cfgs/praise_2"
     ]
-    act_steer_layers = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+    act_steer_layers = [6, 6, 10, 6, 6, 6, 6, 6, 6, 6, 6, 10]
 
     for path, layer in zip(paths, act_steer_layers):
         # Activation Steering
