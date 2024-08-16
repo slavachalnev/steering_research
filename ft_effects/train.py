@@ -165,23 +165,28 @@ torch.save(adapter.state_dict(), "adapter.pt")
 # %%
 
 
-def find_optimal_steer(target, d_model):
+def find_optimal_steer(target, d_model, n_steps=int(1e4)):
     steer = torch.zeros(d_model, requires_grad=True, device=device)
     steer = steer.to(device)
     target = target.to(device)
     optim = torch.optim.Adam([steer], lr=1e-4)
-    for step in range(10000):
+    
+    pbar = tqdm(range(n_steps), desc="Optimizing")
+    for step in pbar:
         optim.zero_grad()
         pred = adapter(steer)
         loss = F.mse_loss(pred, target)
         loss.backward()
         optim.step()
+        
         if step % 100 == 0:
-            print(loss.item())
+            pbar.set_postfix({"loss": f"{loss.item():.6f}"})
+    
     return steer.detach()
 
 
 # %%
+
 
 target = torch.zeros(sae.W_enc.shape[1])
 
@@ -196,10 +201,19 @@ ft_id = 4230 # wedding
 target[ft_id] = 5 # wedding
 criterion = "Text mentions weddings or anything related to weddings."
 
+# ft_name = "bridge"
+# ft_id = 7272
+# target[ft_id] = 5
+# criterion = "Text mentions bridges or anything related to bridges."
+
+# ft_name = "bird"
+# ft_id = 1842
+# target[ft_id] = 5
+# criterion = "Text mentions birds or anything related to birds."
 
 # %%
 
-optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0])
+optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(8e3))
 with torch.no_grad():
     optimal_steer = optimal_steer / torch.norm(optimal_steer)
     
@@ -237,27 +251,18 @@ print("sae_65k top_indices:", top_indices)
 model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device)
 hp = "blocks.12.hook_resid_post"
 
-# def gen(prompt, steer, scale):
-#     toks = model.to_tokens(prompt, prepend_bos=True)
-#     toks = toks.expand(10, -1)
-#     with model.hooks([(hp, partial(patch_resid, steering=steer, scale=scale))]):
-#         gen_toks = model.generate(toks, max_new_tokens=30)
-#     return model.to_string(gen_toks)
-
-
-# gen("I think", optimal_steer, 120)
 
 # %%
-def compute_scores(steer, name):
+def compute_scores(steer, name, criterion, make_plot=True, scales=None):
+    if scales is None:
+        scales = list(range(0, 210, 10))
     scores = []
     coherences = []
     all_texts = dict()
     products = []
-    scales = list(range(0, 210, 10))
     for scale in tqdm(scales):
         gen_texts = steer_model(model, steer.to(device), 12, "I think", scale)
         all_texts[scale] = gen_texts
-
         score, coherence = multi_criterion_evaluation(
             gen_texts,
             [
@@ -266,7 +271,6 @@ def compute_scores(steer, name):
             ],
             prompt="I think",
         )
-
         score = [item['score'] for item in score]
         score = [(item - 1) / 9 for item in score]
         avg_score = sum(score)/len(score)
@@ -276,31 +280,101 @@ def compute_scores(steer, name):
         scores.append(avg_score)
         coherences.append(avg_coherence)
         products.append(avg_score * avg_coherence)
-
     fig = go.Figure()
-    fig.update_layout(title=f"Steering Analysis for {name}")
+    fig.update_layout(
+        title=f"Steering Analysis for {name}",
+        xaxis_title='Scale',
+        yaxis_title='Value',
+        yaxis=dict(range=[0, 1])  # Set y-axis range from 0 to 1
+    )
     fig.add_trace(go.Scatter(x=scales, y=coherences, mode='lines', name='Coherence'))
     fig.add_trace(go.Scatter(x=scales, y=scores, mode='lines', name='Score'))
     fig.add_trace(go.Scatter(x=scales, y=products, mode='lines', name='Coherence * Score'))
-    fig.update_layout(xaxis_title='Scale', yaxis_title='Value')
-    fig.show()
-    fig.write_image(f"analysis_out/{name}_steer_analysis.png")
-
+    if make_plot:
+        fig.show()
+        fig.write_image(f"analysis_out/{name}_steer_analysis.png")
     # save all_texts as json
-    with open(f"analysis_out/{name}_all_texts.json", "w") as f:
-        json.dump(all_texts, f)
+    if make_plot:
+        with open(f"analysis_out/{name}_all_texts.json", "w") as f:
+            json.dump(all_texts, f)
+    return scores, coherences, products
 
-compute_scores(optimal_steer, f"{ft_name}_target")
+# %%
+compute_scores(optimal_steer, f"{ft_name}_optimised", criterion)
 
 # %%
 
-# compute_scores(sae.W_dec[14455], "london")
-compute_scores(sae.W_dec[ft_id], f"{ft_name}_decoder")
+compute_scores(sae.W_dec[ft_id], f"{ft_name}_decoder", criterion)
 
 
 
 # %%
-model.cpu()
-del model
+
+step_options = [1e3, 2e3, 4e3, 6e3, 8e3, 1e4, 2e4, 5e4, 1e5]
+def step_sweep():
+    # sweep n_steps
+    scales = list(range(0, 200, 20))
+    scores = []
+    coherences = []
+    products = []
+    for step in step_options:
+        optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(step))
+        with torch.no_grad():
+            optimal_steer = optimal_steer / torch.norm(optimal_steer)
+        s, c, p = compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, make_plot=False, scales=scales)
+        scores.append(s)
+        coherences.append(c)
+        products.append(p)
+        print(p)
+
+    # plot products for every step option
+    fig = go.Figure()
+    for i, steps in enumerate(step_options):
+        fig.add_trace(go.Scatter(
+            x=scales,
+            y=products[i],
+            mode='lines',
+            name=f'{int(steps)} steps'
+        ))
+    fig.update_layout(
+        title='Score Product vs Scale for Different Step Options',
+        xaxis_title='Scale',
+        yaxis_title='Score Product',
+        legend_title='Number of Steps',
+        yaxis=dict(range=[0, 1])  # Set y-axis range from 0 to 1
+    )
+    fig.show()
+    fig.write_image(f"analysis_out/{ft_name}_step_options_analysis.png")
+    return scores, coherences, products
+
+
+scores, coherences, products = step_sweep()
+
+
+
+# %%
+
+
+max_products = [max(p) for p in products]
+# Create a figure for max product vs step
+fig = go.Figure()
+fig.add_trace(go.Scatter(
+    x=step_options,
+    y=max_products,
+    mode='lines+markers',
+    name='Max Product'
+))
+fig.update_layout(
+    title='Max Score Product vs Number of Steps',
+    xaxis_title='Number of Steps',
+    yaxis_title='Max Score Product',
+    xaxis=dict(type='log'),  # Use log scale for x-axis
+    yaxis=dict(range=[0, 1])  # Set y-axis range from 0 to 1
+)
+fig.show()
+fig.write_image(f"analysis_out/{ft_name}_max_product_vs_steps.png")
+
+
+
 # %%
 
