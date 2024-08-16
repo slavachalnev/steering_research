@@ -34,6 +34,7 @@ paths = [
     "effects/G2_2B_L12/65k_from_20k",
     "effects/G2_2B_L12/65k_from_30k",
     "effects/G2_2B_L12/65k_from_40k",
+    "effects/G2_2B_L12/16k_from_0",
     # "effects/G2_2B_L12/multi_16k_from_0",
 ]
 
@@ -196,16 +197,16 @@ def find_optimal_steer(target, d_model, n_steps=int(1e4), return_intermediate=Fa
 
 target = torch.zeros(sae.W_enc.shape[1])
 
-# ft_name = "london"
-# ft_id = 14455 # london
-# target[ft_id] = 5 # london
-# target[3931] = 1 # uk
-# criterion = "Text mentions London or anything related to London."
+ft_name = "london"
+ft_id = 14455 # london
+target[ft_id] = 5 # london
+# # target[3931] = 1 # uk
+criterion = "Text mentions London or anything related to London."
 
-ft_name = "wedding"
-ft_id = 4230 # wedding
-target[ft_id] = 5 # wedding
-criterion = "Text mentions weddings or anything related to weddings."
+# ft_name = "wedding"
+# ft_id = 4230 # wedding
+# target[ft_id] = 5 # wedding
+# criterion = "Text mentions weddings or anything related to weddings."
 
 # ft_name = "bridge"
 # ft_id = 7272
@@ -223,15 +224,51 @@ optimal_steer, intermediates = find_optimal_steer(target, sae.W_enc.shape[0], n_
 # %%
 # plot norms
 inter_norms = [torch.norm(i).item() for i in intermediates]
+steps = list(range(0, len(inter_norms) * 1000, 1000))  # Assuming intermediates are saved every 1000 steps
 fig = go.Figure()
-fig.add_trace(go.Scatter(x=list(range(len(inter_norms))), y=inter_norms))
+fig.add_trace(go.Scatter(x=steps, y=inter_norms))
+fig.update_layout(
+    title="Norm of Intermediate Vectors During Optimization",
+    xaxis_title="Steps",
+    yaxis_title="Norm"
+)
+fig.show()
+# %%
+# plot inter norms deltas
+inter_norms_deltas = [inter_norms[i+1] - inter_norms[i] for i in range(len(inter_norms)-1)]
+steps_deltas = list(range(1000, len(inter_norms_deltas) * 1000 + 1000, 1000))  # Adjusted for deltas
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=steps_deltas, y=inter_norms_deltas))
+fig.update_layout(
+    title="Change in Norm Between Consecutive Intermediate Vectors",
+    xaxis_title="Steps",
+    yaxis_title="Norm Delta"
+)
 fig.show()
 # %%
 
+target_values = []
+for intermediate in intermediates:
+    with torch.no_grad():
+        prediction = adapter(intermediate)
+        print(prediction.shape)
+    target_values.append(prediction[ft_id].item())
+
+# Plot target values
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=steps, y=target_values))
+fig.update_layout(
+    title=f"Target Feature ({ft_id}) Values During Optimization",
+    xaxis_title="Steps",
+    yaxis_title="Target Feature Value"
+)
+fig.show()
+
+
 
 # %%
 
-optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(2e4))
+optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(8e3))
 with torch.no_grad():
     optimal_steer = optimal_steer / torch.norm(optimal_steer)
     
