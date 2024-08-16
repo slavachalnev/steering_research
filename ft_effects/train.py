@@ -165,12 +165,13 @@ torch.save(adapter.state_dict(), "adapter.pt")
 # %%
 
 
-def find_optimal_steer(target, d_model, n_steps=int(1e4)):
+def find_optimal_steer(target, d_model, n_steps=int(1e4), return_intermediate=False):
     steer = torch.zeros(d_model, requires_grad=True, device=device)
     steer = steer.to(device)
     target = target.to(device)
     optim = torch.optim.Adam([steer], lr=1e-4)
-    
+
+    intermediates = []
     pbar = tqdm(range(n_steps), desc="Optimizing")
     for step in pbar:
         optim.zero_grad()
@@ -179,10 +180,15 @@ def find_optimal_steer(target, d_model, n_steps=int(1e4)):
         loss.backward()
         optim.step()
         
-        if step % 100 == 0:
+        if step % 1000 == 0:
             pbar.set_postfix({"loss": f"{loss.item():.6f}"})
+            if return_intermediate:
+                intermediates.append(steer.detach().cpu())
     
-    return steer.detach()
+    if return_intermediate:
+        return steer.detach(), intermediates
+    else:
+        return steer.detach()
 
 
 # %%
@@ -212,8 +218,20 @@ criterion = "Text mentions weddings or anything related to weddings."
 # criterion = "Text mentions birds or anything related to birds."
 
 # %%
+# compute intermediate
+optimal_steer, intermediates = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(1e5), return_intermediate=True)
+# %%
+# plot norms
+inter_norms = [torch.norm(i).item() for i in intermediates]
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=list(range(len(inter_norms))), y=inter_norms))
+fig.show()
+# %%
 
-optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(8e3))
+
+# %%
+
+optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(2e4))
 with torch.no_grad():
     optimal_steer = optimal_steer / torch.norm(optimal_steer)
     
