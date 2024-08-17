@@ -84,6 +84,10 @@ const FeatureColumn: React.FC<FeatureColumnProps> = ({
 	// }, 300); // 300ms delay
 
 	const removeFeature = (id: string) => {
+		const feature = features.find((feature) => feature.id === id);
+		if (feature && feature.id == inspectedFeature?.id) {
+			inspectFeature(feature);
+		}
 		setFeatures(features.filter((feature) => feature.id !== id));
 	};
 
@@ -128,6 +132,11 @@ const FeatureColumn: React.FC<FeatureColumnProps> = ({
 					flexDirection: "column",
 					alignItems: "center",
 					transition: "width 0.3s",
+					height: "calc(100vh - 2px)",
+					overflowY: "auto",
+					border: columnSide === "right" ? "1px solid white" : "none",
+					backgroundColor:
+						columnSide === "right" ? "rgba(255,255,255, 0.5)" : "none",
 					// marginLeft: columnSide === "left" ? "25px" : "0px",
 					// width: inspectedFeature ? "50%" : "100%",
 				}}
@@ -162,18 +171,20 @@ const FeatureColumn: React.FC<FeatureColumnProps> = ({
 					)}
 				</div>
 
-				{features.map((feature) => (
-					<React.Fragment key={feature.id}>
-						<FeatureCard
-							inspectFeature={inspectFeature}
-							inspectedFeature={inspectedFeature}
-							feature={feature}
-							onDelete={removeFeature}
-							columnSide={columnSide}
-						/>
-						<div style={{ height: "10px", width: "100%" }} />
-					</React.Fragment>
-				))}
+				<div style={{ display: "flex", flexDirection: "column", gap: ".5px" }}>
+					{features.map((feature) => (
+						<React.Fragment key={feature.id}>
+							<FeatureCard
+								inspectFeature={inspectFeature}
+								inspectedFeature={inspectedFeature}
+								feature={feature}
+								onDelete={removeFeature}
+								columnSide={columnSide}
+							/>
+							<div style={{ height: "10px", width: "100%" }} />
+						</React.Fragment>
+					))}
+				</div>
 				{columnSide === "left" && (
 					<div className="add-feature-container">
 						<span

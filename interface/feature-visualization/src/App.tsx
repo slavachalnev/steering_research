@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
 // import FeatureCard from "./FeatureCard";
 import FeatureColumn from "./FeatureColumn";
@@ -16,6 +16,10 @@ export default function App() {
 			setInspectedFeature(feature);
 		}
 	};
+
+	useEffect(() => {
+		console.log(inspectedFeature);
+	}, [inspectedFeature]);
 
 	return (
 		<div

@@ -374,11 +374,14 @@ function FeatureCard({
 	return (
 		<div
 			style={{
-				backgroundColor: "rgba(255,255,255, 0.8)",
+				backgroundColor:
+					inspectedFeature?.id === feature.id
+						? "rgba(255,255,255, 1)"
+						: "rgba(255,255,255, 0.8)",
 				border:
 					inspectedFeature?.id === feature.id
-						? "3px solid rgba(0, 0, 255, 0.65)"
-						: "3px solid rgba(0, 0, 0, 0)",
+						? "6px solid rgba(0, 0, 255, 0.65)"
+						: "6px solid rgba(0, 0, 0, 0)",
 				padding: "8px",
 				paddingBottom: "4px",
 				borderRadius: "4px",
