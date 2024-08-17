@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
 // import { keyframes } from "@emotion/react";
+import { FeatureItem } from "./types";
 
 const getBaseUrl = () => {
 	return process.env.NODE_ENV === "development"
@@ -114,14 +115,195 @@ const ActivationItem = ({ activation }: { activation: any }) => {
 	);
 };
 
-function FeatureCard({
-	id,
-	featureNumber,
+const FeatureCardCommands = ({
+	columnSide,
+	inspectFeature,
+	inspectedFeature,
 	onDelete,
+	feature,
+	peek,
+	hide,
 }: {
-	id: string;
-	featureNumber: number;
+	columnSide: "left" | "right";
+	inspectFeature: (feature: FeatureItem) => void;
+	inspectedFeature: FeatureItem | null;
 	onDelete: (id: string) => void;
+	feature: FeatureItem;
+	peek: () => void;
+	hide: () => void;
+}) => {
+	return (
+		<div>
+			{columnSide === "left" ? (
+				<>
+					{/* <div
+						style={{
+							position: "absolute",
+							top: "7px",
+							right: "56px",
+							cursor: "pointer",
+							fontSize: "16px",
+							color: "gray",
+							transition: "color 0.1s ease-in-out",
+						}}
+						onMouseDown={() => {
+							peek();
+						}}
+						onMouseUp={() => {
+							hide();
+						}}
+						onMouseEnter={(e) => (e.currentTarget.style.color = "black")}
+						onMouseLeave={(e) => {
+							e.currentTarget.style.color = "gray";
+						}}
+					>
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 16 16"
+							fill="none"
+							xmlns="http://www.w3.org/2000/svg"
+						>
+							<path
+								d="M1 8C1 8 3.5 3 8 3C12.5 3 15 8 15 8C15 8 12.5 13 8 13C3.5 13 1 8 1 8Z"
+								stroke="currentColor"
+								strokeWidth="1.5"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							/>
+							<path
+								d="M8 10C9.10457 10 10 9.10457 10 8C10 6.89543 9.10457 6 8 6C6.89543 6 6 6.89543 6 8C6 9.10457 6.89543 10 8 10Z"
+								stroke="currentColor"
+								strokeWidth="1.5"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							/>
+						</svg>
+					</div> */}
+					<div
+						style={{
+							position: "absolute",
+							top: "7px",
+							right: "33px",
+							cursor: "pointer",
+							fontSize: "16px",
+							color: inspectedFeature?.id === feature.id ? "black" : "gray",
+							transition: "color 0.1s ease-in-out",
+						}}
+						onClick={() => {
+							inspectFeature(feature);
+						}}
+						onMouseEnter={(e) => (e.currentTarget.style.color = "black")}
+						onMouseLeave={(e) => {
+							e.currentTarget.style.color =
+								inspectedFeature?.id === feature.id ? "black" : "gray";
+						}}
+					>
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 16 16"
+							fill="none"
+							xmlns="http://www.w3.org/2000/svg"
+						>
+							<path
+								d="M7.33333 12.6667C10.2789 12.6667 12.6667 10.2789 12.6667 7.33333C12.6667 4.38781 10.2789 2 7.33333 2C4.38781 2 2 4.38781 2 7.33333C2 10.2789 4.38781 12.6667 7.33333 12.6667Z"
+								stroke="currentColor"
+								strokeWidth="1.5"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							/>
+							<path
+								d="M14 14L11 11"
+								stroke="currentColor"
+								strokeWidth="1.5"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							/>
+						</svg>
+					</div>
+					<div
+						style={{
+							position: "absolute",
+							top: "7px",
+							right: "10px",
+							cursor: "pointer",
+							fontSize: "16px",
+							color: "gray",
+							transition: "color 0.1s ease-in-out",
+						}}
+						onClick={() => onDelete(feature.id)}
+						onMouseEnter={(e) => (e.currentTarget.style.color = "black")}
+						onMouseLeave={(e) => (e.currentTarget.style.color = "gray")}
+					>
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 16 16"
+							fill="none"
+							xmlns="http://www.w3.org/2000/svg"
+						>
+							<path
+								d="M2 4h12M5.333 4V2.667a1.333 1.333 0 011.334-1.334h2.666a1.333 1.333 0 011.334 1.334V4m2 0v9.333a1.333 1.333 0 01-1.334 1.334H4.667a1.333 1.333 0 01-1.334-1.334V4h9.334z"
+								stroke="currentColor"
+								strokeWidth="1.5"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							/>
+						</svg>
+					</div>
+				</>
+			) : (
+				<>
+					{" "}
+					<div
+						style={{
+							position: "absolute",
+							top: "7px",
+							right: "10px",
+							cursor: "pointer",
+							fontSize: "16px",
+							color: "gray",
+							transition: "color 0.1s ease-in-out",
+						}}
+						onClick={() => onDelete(feature.id)}
+						onMouseEnter={(e) => (e.currentTarget.style.color = "black")}
+						onMouseLeave={(e) => (e.currentTarget.style.color = "gray")}
+					>
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 16 16"
+							fill="none"
+							xmlns="http://www.w3.org/2000/svg"
+						>
+							<path
+								d="M8 3v10M3 8h10"
+								stroke="currentColor"
+								strokeWidth="1.5"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							/>
+						</svg>
+					</div>
+				</>
+			)}
+		</div>
+	);
+};
+
+function FeatureCard({
+	feature,
+	onDelete,
+	inspectFeature,
+	inspectedFeature,
+	columnSide,
+}: {
+	feature: FeatureItem;
+	onDelete: (id: string) => void;
+	inspectFeature: (feature: FeatureItem) => void;
+	inspectedFeature: FeatureItem | null;
+	columnSide: "left" | "right";
 }) {
 	const [activations, setActivations] = useState([]);
 	const [description, setDescription] = useState("");
@@ -135,7 +317,7 @@ function FeatureCard({
 	const fetchFeatureData = async () => {
 		try {
 			const response = await fetch(
-				`${getBaseUrl()}/api/feature/${featureNumber}`,
+				`${getBaseUrl()}/api/feature/${feature.featureNumber}`,
 				{
 					method: "GET",
 					headers: {
@@ -162,7 +344,7 @@ function FeatureCard({
 
 	useEffect(() => {
 		fetchFeatureData();
-	}, [featureNumber]);
+	}, [feature]);
 
 	useEffect(() => {
 		if (contentRef.current) {
@@ -181,47 +363,33 @@ function FeatureCard({
 		}
 	}, [expanded]);
 
+	const peek = () => {
+		setExpanded(true);
+	};
+
+	const hide = () => {
+		setExpanded(false);
+	};
+
 	return (
 		<div
 			style={{
 				backgroundColor: "rgba(255,255,255, 0.8)",
-				padding: "5px",
+				border:
+					inspectedFeature?.id === feature.id
+						? "3px solid rgba(0, 0, 255, 0.65)"
+						: "3px solid rgba(0, 0, 0, 0)",
+				padding: "8px",
+				paddingBottom: "4px",
 				borderRadius: "4px",
-				minWidth: "400px",
-				maxWidth: "650px",
+				margin: "0 12px",
+				// minWidth: "400px",
+				textAlign: "center",
+				width: "calc(100% - 24px)",
+				maxWidth: columnSide === "left" ? "650px" : "450px",
 				position: "relative",
 			}}
 		>
-			<div
-				style={{
-					position: "absolute",
-					top: "5px",
-					right: "5px",
-					cursor: "pointer",
-					fontSize: "16px",
-					color: "gray",
-					transition: "color 0.1s ease-in-out",
-				}}
-				onClick={() => onDelete(id)}
-				onMouseEnter={(e) => (e.currentTarget.style.color = "black")}
-				onMouseLeave={(e) => (e.currentTarget.style.color = "gray")}
-			>
-				<svg
-					width="16"
-					height="16"
-					viewBox="0 0 16 16"
-					fill="none"
-					xmlns="http://www.w3.org/2000/svg"
-				>
-					<path
-						d="M2 4h12M5.333 4V2.667a1.333 1.333 0 011.334-1.334h2.666a1.333 1.333 0 011.334 1.334V4m2 0v9.333a1.333 1.333 0 01-1.334 1.334H4.667a1.333 1.333 0 01-1.334-1.334V4h9.334z"
-						stroke="currentColor"
-						strokeWidth="1.5"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-					/>
-				</svg>
-			</div>
 			<div
 				style={{
 					display: "flex",
@@ -229,6 +397,15 @@ function FeatureCard({
 					color: "black",
 				}}
 			>
+				<FeatureCardCommands
+					columnSide={columnSide}
+					inspectFeature={inspectFeature}
+					inspectedFeature={inspectedFeature}
+					onDelete={onDelete}
+					feature={feature}
+					peek={peek}
+					hide={hide}
+				/>
 				<div
 					style={{
 						borderRadius: "5px",
@@ -241,13 +418,13 @@ function FeatureCard({
 						color: "white",
 					}}
 				>
-					Feature {featureNumber}
+					Feature {feature.featureNumber}
 				</div>
 				<div
 					style={{
 						fontSize: ".75rem",
 						marginLeft: "5px",
-						marginRight: "10px",
+						marginRight: columnSide === "left" ? "45px" : "33px",
 						padding: "1px",
 						fontWeight: "bold",
 						textAlign: "left",
