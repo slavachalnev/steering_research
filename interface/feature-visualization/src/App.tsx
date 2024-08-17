@@ -15,8 +15,6 @@ export default function App() {
 	]);
 	const [newFeature, setNewFeature] = useState<string>("");
 	const [isInputVisible, setIsInputVisible] = useState(false);
-	const [isInputExpanding, setIsInputExpanding] = useState(false);
-	const [isInputCollapsing, setIsInputCollapsing] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
 
 	const handleAddFeature = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -36,19 +34,13 @@ export default function App() {
 
 	const expandInput = () => {
 		setIsInputVisible(true);
-		setIsInputExpanding(true);
-		setTimeout(() => {
-			setIsInputExpanding(false);
-		}, 100); // Match this with the CSS transition duration
 	};
 
 	const collapseInput = () => {
-		setIsInputCollapsing(true);
-		setTimeout(() => {
+		if (newFeature.trim() === "") {
 			setIsInputVisible(false);
-			setIsInputCollapsing(false);
 			setNewFeature("");
-		}, 100); // Match this with the CSS transition duration
+		}
 	};
 
 	useEffect(() => {
@@ -62,32 +54,33 @@ export default function App() {
 			style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
 		>
 			{features.map((feature) => (
-				<FeatureCard
-					key={feature.id}
-					id={feature.id}
-					featureNumber={feature.featureNumber}
-					onDelete={removeFeature}
-				/>
+				<>
+					<FeatureCard
+						key={feature.id}
+						id={feature.id}
+						featureNumber={feature.featureNumber}
+						onDelete={removeFeature}
+					/>
+					<div style={{ height: "10px", width: "100%" }} />
+				</>
 			))}
 			<div className="add-feature-container">
-				{!isInputVisible ? (
-					<span className="add-icon" onClick={expandInput}>
-						+
-					</span>
-				) : (
-					<input
-						ref={inputRef}
-						type="text"
-						value={newFeature}
-						onChange={(e) => setNewFeature(e.target.value)}
-						onKeyDown={handleAddFeature}
-						onBlur={collapseInput}
-						placeholder="Enter feature or search"
-						className={`feature-input ${isInputExpanding ? "expanding" : ""} ${
-							isInputCollapsing ? "collapsing" : ""
-						}`}
-					/>
-				)}
+				<span
+					className={`add-icon ${isInputVisible ? "hidden" : ""}`}
+					onClick={expandInput}
+				>
+					+
+				</span>
+				<input
+					ref={inputRef}
+					type="text"
+					value={newFeature}
+					onChange={(e) => setNewFeature(e.target.value)}
+					onKeyDown={handleAddFeature}
+					onBlur={collapseInput}
+					placeholder="Enter feature or search"
+					className={`feature-input ${isInputVisible ? "visible" : ""}`}
+				/>
 			</div>
 		</div>
 	);

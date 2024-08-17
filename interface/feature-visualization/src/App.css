@@ -33,31 +33,45 @@
 /* Add feature container */
 
 .add-feature-container {
-  margin-top: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
   width: 200px;
   height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .add-icon {
-  font-size: 24px;
+  position: absolute;
   cursor: pointer;
-  transition: opacity 0.1s ease-in-out;
+  font-size: 24px;
+  transition: opacity 0.3s ease-out;
+  z-index: 2;
+}
+
+.add-icon.hidden {
+  opacity: 0;
 }
 
 .feature-input {
-  width: 0;
+  position: absolute;
+  width: 40px;
+  height: 20px;
   padding: 5px;
-  border: none;
-  border-bottom: 2px solid #ccc;
+  border: 1px solid #ccc;
+  border-radius: 4px;
   font-size: 16px;
-  transition: width 0.1s ease-in-out;
-  outline: none;
+  transition: all 0.2s ease-out;
+  opacity: 0;
+  background-color: white;
+}
+
+.feature-input.visible {
+  width: 200px;
+  opacity: 1;
 }
 
 .feature-input:focus {
-  width: 100%;
+  outline: none;
+  border-color: none;
 }
-

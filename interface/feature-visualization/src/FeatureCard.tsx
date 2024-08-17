@@ -190,7 +190,6 @@ function FeatureCard({
 				minWidth: "400px",
 				maxWidth: "650px",
 				position: "relative",
-				marginBottom: "10px",
 			}}
 		>
 			<div
