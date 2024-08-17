@@ -8,6 +8,7 @@ from transformer_lens import HookedTransformer
 from functools import partial
 import json
 import plotly.express as px
+import plotly.graph_objects as go
 from tqdm import tqdm
 from steering.evals_utils import multi_criterion_evaluation
 from steering.utils import normalise_decoder
@@ -22,7 +23,7 @@ from sae_lens import SAE
 # %%
 
 def load_sae_steer(path):
-    with open(os.path.join(path, "sae_steer.json"), 'r') as f:
+    with open(os.path.join(path, "feature_steer.json"), 'r') as f:
         steer = json.load(f)
     # steer is {
     #    "sae": "gemma-2b-res-jb",
@@ -31,7 +32,7 @@ def load_sae_steer(path):
     #    "features": [[155, .5], [23333, .5]] }
     sae, _, _ = SAE.from_pretrained(
         release = steer['sae'],
-        sae_id = steer['hp'],
+        sae_id = steer['layer'],
         device = 'cpu')
     normalise_decoder(sae)
     vectors = []
@@ -40,7 +41,7 @@ def load_sae_steer(path):
     vectors = torch.stack(vectors, dim=0)
     vec = vectors.sum(dim=0)
     vec = vec / torch.norm(vec, dim=-1, keepdim=True)
-    return vec, steer['hp'], steer['layer']
+    return vec, steer['layer'], 6 # hack # TODO: fix
 
 def steer_model(model, steer, layer, text, scale=5, batch_size=64, n_samples=128):
     toks = model.to_tokens(text, prepend_bos=True)
@@ -61,29 +62,33 @@ def steer_model(model, steer, layer, text, scale=5, batch_size=64, n_samples=128
     return all_gen
 
 def plot(path, coherence, score, scales, method):
-    fig = px.line(
-        x=scales,
-        y=[coherence, score],
-        labels={'x': 'Scale', 'y': 'Score'},
-        title=f'Coherence and Score vs Scale for {path} ({method})',
-        line_shape='linear'
+    product = [c * s for c, s in zip(coherence, score)]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=scales, y=coherence, mode='lines', name='Coherence'))
+    fig.add_trace(go.Scatter(x=scales, y=score, mode='lines', name='Score'))
+    fig.add_trace(go.Scatter(x=scales, y=product, mode='lines', name='Coherence * Score'))
+    fig.update_layout(
+        title=f'Coherence, Score, and Their Product vs Scale for {path} ({method})',
+        xaxis_title='Scale',
+        yaxis_title='Value',
+        legend_title='Metric'
     )
-    fig.data[0].name = 'Coherence'
-    fig.data[1].name = 'Score'
-    fig.update_layout(legend_title_text='Metric')
     fig.write_image(os.path.join(path, f"scores_{method}.png"))
 
 def analyse_steer(model, steer, layer, path, method='activation_steering'):
-    scales = list(range(0, 200, 20))
+    scales = list(range(0, 200, 10))
     with open(os.path.join(path, "criteria.json"), 'r') as f:
         criteria = json.load(f)
     with open(os.path.join(path, "prompts.json"), 'r') as f:
         prompts = json.load(f)
     
+    all_texts = []
+    
     avg_score = []
     avg_coh = []
     for scale in tqdm(scales):
         texts = steer_model(model, steer, layer, prompts[0], scale=scale)
+        all_texts.append((scale, texts))
         
         score, coherence = multi_criterion_evaluation(
             texts,
@@ -97,6 +102,9 @@ def analyse_steer(model, steer, layer, path, method='activation_steering'):
         coherence = [(item - 1) / 9 for item in coherence]
         avg_score.append(sum(score) / len(score))
         avg_coh.append(sum(coherence) / len(coherence))
+    
+    with open(os.path.join(path, f"generated_texts_{method}.json"), 'w') as f:
+        json.dump(all_texts, f, indent=2)
 
     plot(path, avg_coh, avg_score, scales, method)
 
@@ -112,12 +120,20 @@ if __name__ == "__main__":
 if __name__ == "__main__":
 
     paths = [
+        # "steer_cfgs/anger",
+        # "steer_cfgs/christian_evangelist",
+        # "steer_cfgs/christian_evangelist_2",
+        # "steer_cfgs/conspiracy",
+        # "steer_cfgs/french",
         # "steer_cfgs/golden_gate",
-        # "steer_cfgs/love_hate",
-        # "steer_cfgs/christianity",
         "steer_cfgs/london",
+        # "steer_cfgs/love",
+        # "steer_cfgs/praise",
+        # "steer_cfgs/want_to_die",
+        # "steer_cfgs/wedding",
+        # "steer_cfgs/praise_2"
     ]
-    act_steer_layers = [10, 10, 10]
+    act_steer_layers = [6, 6, 10, 6, 6, 6, 6, 6, 6, 6, 6, 10]
 
     for path, layer in zip(paths, act_steer_layers):
         # # Activation Steering

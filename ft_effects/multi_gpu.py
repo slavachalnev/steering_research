@@ -70,15 +70,13 @@ def worker(rank, world_size, task_queue, features, save_dir, scale=None):
                                       )
             else:
                 opt_scale = scale
-            used_feature = feature * opt_scale
-            used_feature = used_feature.to(sae.W_dec.device)
 
-            ft_samples = gen(model=model, steer=used_feature)
+            ft_samples = gen(model=model, steer=feature.to(sae.W_dec.device), scale=opt_scale)
             ft_dist = get_feature_acts(model=model, sae=sae, tokens=ft_samples, batch_size=64)
             diff = ft_dist - baseline_dist
             results.append({
                 'effect': diff.cpu(),
-                'used_feature': used_feature.cpu(),
+                'used_feature': (feature * opt_scale).cpu(),
                 'feature_index': feature_index
             })
             print(f"processed {feature_index}")
@@ -150,9 +148,29 @@ def main(features, save_dir):
     print('done save')
 
 if __name__ == "__main__":
+    # # 16k
+    # path_to_params = hf_hub_download(
+    # repo_id="google/gemma-scope-2b-pt-res",
+    # filename="layer_12/width_16k/average_l0_82/params.npz",
+    # force_download=False)
+    # params = np.load(path_to_params)
+    # pt_params = {k: torch.from_numpy(v) for k, v in params.items()}
+    # sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
+    # sae.load_state_dict(pt_params)
+    # sae._requires_grad = False
+
+    # save_dir = "effects/G2_2B_L12/multi_16k_from_0"
+    # os.makedirs(save_dir)
+    # main(sae.W_dec, save_dir)
+
+    ###################################3
+
+
+    # 32k
+    # layer_12/width_32k/average_l0_76
     path_to_params = hf_hub_download(
     repo_id="google/gemma-scope-2b-pt-res",
-    filename="layer_12/width_16k/average_l0_82/params.npz",
+    filename="layer_12/width_32k/average_l0_76/params.npz",
     force_download=False)
     params = np.load(path_to_params)
     pt_params = {k: torch.from_numpy(v) for k, v in params.items()}
@@ -160,6 +178,7 @@ if __name__ == "__main__":
     sae.load_state_dict(pt_params)
     sae._requires_grad = False
 
-    save_dir = "effects/G2_2B_L12/multi_16k_from_0"
+    save_dir = "effects/G2_2B_L12/multi_32k_from_0"
     os.makedirs(save_dir)
     main(sae.W_dec, save_dir)
+
