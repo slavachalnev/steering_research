@@ -50,6 +50,9 @@ effects = torch.cat(effects)
 print(features.shape)
 print(effects.shape)
 
+# normalise features to have norm 1
+features = features / torch.norm(features, dim=-1, keepdim=True)
+
 val_features = features[-100:]
 val_effects = effects[-100:]
 features = features[:-100]
@@ -60,6 +63,11 @@ print(features.shape)
 print(effects.shape)
 print(val_features.shape)
 print(val_effects.shape)
+
+# val_ft_norms = torch.norm(val_features, dim=-1)
+# fig = px.histogram(val_ft_norms)
+# fig.show()
+
 # %%
 
 @torch.no_grad()
@@ -82,7 +90,7 @@ sae = get_sae()
 class LinearAdapter(nn.Module):
     def __init__(self, sae):
         super().__init__()
-        self.d_model, self.d_sae = sae.W_enc.shape 
+        self.d_model, self.d_sae = sae.W_enc.shape
         # self.W = nn.Parameter(sae.W_enc.detach().clone())
         self.W = nn.Parameter(nn.init.kaiming_uniform_(torch.empty(self.d_model, self.d_sae)))
         self.b = nn.Parameter(torch.zeros(self.d_sae))
@@ -93,7 +101,7 @@ class LinearAdapter(nn.Module):
 class NonLinearAdapter(nn.Module):
     def __init__(self, sae):
         super().__init__()
-        self.d_model, self.d_sae = sae.W_enc.shape 
+        self.d_model, self.d_sae = sae.W_enc.shape
         self.W1 = nn.Parameter(nn.init.kaiming_uniform_(torch.empty(self.d_model, self.d_sae)))
         self.b1 = nn.Parameter(torch.zeros(self.d_sae))
         self.W2 = nn.Parameter(nn.init.kaiming_uniform_(torch.empty(self.d_sae, self.d_sae)))
@@ -116,12 +124,12 @@ def train(num_epochs, lr=1e-4):
     opt = torch.optim.Adam(adapter.parameters(), lr=lr)
 
     scheduler = CosineAnnealingLR(opt, T_max=num_epochs)
-    
+
     for epoch in range(num_epochs):
         adapter.train()
         total_loss = 0
         num_batches = 0
-        
+
         for batch_features, batch_effects in dataloader:
             opt.zero_grad()
             batch_features = batch_features.to(device)
@@ -130,17 +138,17 @@ def train(num_epochs, lr=1e-4):
             loss = F.mse_loss(pred, batch_effects)
             loss.backward()
             opt.step()
-            
+
             total_loss += loss.item()
             num_batches += 1
-        
+
         avg_train_loss = total_loss / num_batches
-        
+
         # Validation
         adapter.eval()
         val_total_loss = 0
         val_num_batches = 0
-        
+
         with torch.no_grad():
             for val_features, val_effects in val_dataloader:
                 val_features = val_features.to(device)
@@ -149,10 +157,10 @@ def train(num_epochs, lr=1e-4):
                 val_loss = F.mse_loss(val_pred, val_effects)
                 val_total_loss += val_loss.item()
                 val_num_batches += 1
-        
+
         scheduler.step()
         avg_val_loss = val_total_loss / val_num_batches
-        
+
         print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {avg_train_loss:.4f}, Validation Loss: {avg_val_loss:.4f}, LR: {scheduler.get_last_lr()[0]:.6f}")
 
 
@@ -164,28 +172,36 @@ train(20, lr=2e-4)
 
 torch.save(adapter.state_dict(), "adapter.pt")
 # %%
+# %%
 
-
-def find_optimal_steer(target, d_model, n_steps=int(1e4), return_intermediate=False):
+def find_optimal_steer(target, d_model, important_id=None, n_steps=int(1e4), return_intermediate=False):
     steer = torch.zeros(d_model, requires_grad=True, device=device)
     steer = steer.to(device)
     target = target.to(device)
+
     optim = torch.optim.Adam([steer], lr=1e-4)
 
     intermediates = []
     pbar = tqdm(range(n_steps), desc="Optimizing")
     for step in pbar:
         optim.zero_grad()
-        pred = adapter(steer)
-        loss = F.mse_loss(pred, target)
+        # add noise to the input
+        pred = adapter(steer + torch.randn_like(steer) * 0.05)
+
+        if important_id is not None:
+            loss = (pred[important_id] - target[important_id])**2
+
+        else:
+            loss = F.mse_loss(pred, target)
+
         loss.backward()
         optim.step()
-        
+
         if step % 1000 == 0:
             pbar.set_postfix({"loss": f"{loss.item():.6f}"})
             if return_intermediate:
                 intermediates.append(steer.detach().cpu())
-    
+
     if return_intermediate:
         return steer.detach(), intermediates
     else:
@@ -193,14 +209,12 @@ def find_optimal_steer(target, d_model, n_steps=int(1e4), return_intermediate=Fa
 
 
 # %%
-
-
 target = torch.zeros(sae.W_enc.shape[1])
 
 ft_name = "london"
 ft_id = 14455 # london
-target[ft_id] = 5 # london
-# # target[3931] = 1 # uk
+target[ft_id] = 1 # london
+# target[3931] = 0.5 # uk
 criterion = "Text mentions London or anything related to London."
 
 # ft_name = "wedding"
@@ -220,7 +234,13 @@ criterion = "Text mentions London or anything related to London."
 
 # %%
 # compute intermediate
-optimal_steer, intermediates = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(1e5), return_intermediate=True)
+optimal_steer, intermediates = find_optimal_steer(
+    target,
+    sae.W_enc.shape[0],
+    n_steps=int(1e4),
+    return_intermediate=True,
+    important_id=ft_id
+    )
 # %%
 # plot norms
 inter_norms = [torch.norm(i).item() for i in intermediates]
@@ -248,11 +268,23 @@ fig.show()
 # %%
 
 target_values = []
+other_values = []
 for intermediate in intermediates:
     with torch.no_grad():
-        prediction = adapter(intermediate)
-        print(prediction.shape)
+        prediction = adapter(intermediate.to(device))
     target_values.append(prediction[ft_id].item())
+    other_values.append(sum(value for idx, value in enumerate(prediction) if idx != ft_id).item())
+
+# Plot target values and other values
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=steps, y=target_values, name="Target Feature"))
+fig.add_trace(go.Scatter(x=steps, y=other_values, name="Other Features"))
+fig.update_layout(
+    title=f"Target Feature ({ft_id}) and Other Features Values During Optimization",
+    xaxis_title="Steps",
+    yaxis_title="Feature Values"
+)
+fig.show()
 
 # Plot target values
 fig = go.Figure()
@@ -267,11 +299,10 @@ fig.show()
 
 
 # %%
-
-optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(8e3))
+optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(5000), important_id=ft_id)
 with torch.no_grad():
     optimal_steer = optimal_steer / torch.norm(optimal_steer)
-    
+
 optimal_steer = optimal_steer.cpu()
 
 # cosine sims between optimal steer and all vector of sae.W_dec
@@ -285,7 +316,7 @@ def get_sae_dec():
     path_to_params = hf_hub_download(
         repo_id="google/gemma-scope-2b-pt-res",
         filename="layer_12/width_65k/average_l0_72/params.npz",
-        force_download=False) 
+        force_download=False)
     params = np.load(path_to_params)
     pt_params = {k: torch.from_numpy(v).cuda() for k, v in params.items()}
     sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
@@ -308,6 +339,7 @@ hp = "blocks.12.hook_resid_post"
 
 
 # %%
+@torch.no_grad()
 def compute_scores(steer, name, criterion, make_plot=True, scales=None):
     if scales is None:
         scales = list(range(0, 210, 10))
@@ -355,7 +387,8 @@ def compute_scores(steer, name, criterion, make_plot=True, scales=None):
     return scores, coherences, products
 
 # %%
-compute_scores(optimal_steer, f"{ft_name}_optimised", criterion)
+# compute_scores(optimal_steer, f"{ft_name}_optimised", criterion)
+compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, scales=list(range(0, 200, 30)))
 
 # %%
 
@@ -365,15 +398,18 @@ compute_scores(sae.W_dec[ft_id], f"{ft_name}_decoder", criterion)
 
 # %%
 
-step_options = [1e3, 2e3, 4e3, 6e3, 8e3, 1e4, 2e4, 5e4, 1e5]
+# step_options = [1e3, 2e3, 4e3, 6e3, 8e3, 1e4, 2e4, 5e4, 1e5]
+# step_options = [20, 40, 60, 80, 1e2, 5e2, 8e2, 1e3]#, 2e3, 4e3, 6e3, 8e3]
+# step_options = [40, 60, 80, 100, 200, 500, 1e3, 2e3, 4e3, 1e4, 2e4]
+step_options = [50, 100, 200, 500, 1e3, 2e3, 4e3, 1e4, 2e4]
 def step_sweep():
     # sweep n_steps
-    scales = list(range(0, 200, 20))
+    scales = list(range(0, 220, 20))
     scores = []
     coherences = []
     products = []
     for step in step_options:
-        optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(step))
+        optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(step), important_id=ft_id)
         with torch.no_grad():
             optimal_steer = optimal_steer / torch.norm(optimal_steer)
         s, c, p = compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, make_plot=False, scales=scales)
@@ -432,4 +468,3 @@ fig.write_image(f"analysis_out/{ft_name}_max_product_vs_steps.png")
 
 
 # %%
-
