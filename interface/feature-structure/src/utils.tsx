@@ -9,7 +9,8 @@ const getBaseUrl = () => {
 export const fetchExpandedCluster = async (
 	feature: number,
 	cluster: number[],
-	threshold: number = 0.5
+	threshold: number = 0.5,
+	type: "cosine" | "effects_cosine" | "effects" = "cosine"
 ) => {
 	console.log(
 		`fetching activations for feature: ${feature} and cluster: ${cluster}`
@@ -23,7 +24,8 @@ export const fetchExpandedCluster = async (
 			body: JSON.stringify({
 				node_to_expand: feature,
 				current_cluster: cluster,
-				threshold: threshold,
+				threshold,
+				type,
 			}),
 		});
 		if (!response.ok) {

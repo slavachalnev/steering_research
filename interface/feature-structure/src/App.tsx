@@ -49,8 +49,14 @@ function App() {
 	const [threshold, setThreshold] = useState<number>(0.5);
 	const clusterRef = useRef<HTMLDivElement>(null);
 	const [bulkInput, setBulkInput] = useState("");
+	const [similarityType, setSimilarityType] = useState<string>("cosine");
+
+	const isValidItem = (item: Item): boolean => {
+		return item.feature !== null && typeof item.feature === "number";
+	};
 
 	const addToCluster = (itemToAdd: Item) => {
+		if (!isValidItem(itemToAdd)) return;
 		const newCluster = cluster.some(
 			(item) => item.feature === itemToAdd.feature
 		)
@@ -76,7 +82,8 @@ function App() {
 		const expandedCluster = await fetchExpandedCluster(
 			selectedItem.feature,
 			newCluster.map((item) => item.feature),
-			threshold
+			threshold,
+			similarityType as "cosine" | "effects_cosine" | "effects"
 		);
 
 		// Update frontier with proper Item objects
@@ -96,6 +103,7 @@ function App() {
 
 	const updateSelectedItem = (node: number | Item) => {
 		if (typeof node === "number") {
+			if (isNaN(node)) return;
 			const newItem: Item = {
 				feature: node,
 				from: null,
@@ -103,6 +111,7 @@ function App() {
 			setSelectedItem(newItem);
 			// setInputText(node.toString());
 		} else {
+			if (!isValidItem(node)) return;
 			setSelectedItem(node);
 			// setInputText(node.feature.toString());
 		}
@@ -120,26 +129,15 @@ function App() {
 			});
 	};
 
-	const captureClusterAsPNG = () => {
-		if (clusterRef.current) {
-			html2canvas(clusterRef.current).then((canvas) => {
-				const image = canvas
-					.toDataURL("image/png")
-					.replace("image/png", "image/octet-stream");
-				const link = document.createElement("a");
-				link.download = "cluster.png";
-				link.href = image;
-				link.click();
-			});
-		}
-	};
-
 	const addBulkItems = () => {
 		const items = bulkInput.split(",").map((item) => item.trim());
-		const newItems = items.map((item) => ({
-			feature: parseInt(item),
-			from: null,
-		}));
+		const newItems = items
+			.map((item) => parseInt(item))
+			.filter((num) => !isNaN(num))
+			.map((feature) => ({
+				feature,
+				from: null,
+			}));
 		setCluster((prevCluster) => {
 			const uniqueNewItems = newItems.filter(
 				(newItem) =>
@@ -147,6 +145,9 @@ function App() {
 						(existingItem) => existingItem.feature === newItem.feature
 					)
 			);
+			console.log(prevCluster);
+			console.log(uniqueNewItems);
+
 			return [...uniqueNewItems, ...prevCluster];
 		});
 		setBulkInput("");
@@ -160,7 +161,7 @@ function App() {
 
 	useEffect(() => {
 		findFrontier();
-	}, [threshold, selectedItem]);
+	}, [threshold, selectedItem, similarityType]);
 
 	useEffect(() => {
 		console.log("cluster");
@@ -178,7 +179,7 @@ function App() {
 				<h3>Cluster</h3>
 
 				<button onClick={copyClusterToClipboard}>Copy Cluster Features</button>
-				<button onClick={captureClusterAsPNG}>Capture Cluster as PNG</button>
+				{/* <button onClick={captureClusterAsPNG}>Capture Cluster as PNG</button> */}
 				<div>
 					<input
 						type="text"
@@ -207,7 +208,15 @@ function App() {
 			</div>
 			<div>
 				<h3>Frontier</h3>
-				<input
+				<select
+					value={similarityType}
+					onChange={(e) => setSimilarityType(e.target.value)}
+				>
+					<option value="cosine">Cosine</option>
+					<option value="effects_cosine">Effects Cosine</option>
+					<option value="effects">Effects</option>
+				</select>
+				{/* <input
 					type="text"
 					value={inputText}
 					onChange={(e) => setInputText(e.target.value)}
@@ -215,7 +224,7 @@ function App() {
 				/>
 				<button onClick={() => updateSelectedItem(Number(inputText))}>
 					Expand
-				</button>
+				</button> */}
 
 				<div>
 					<label htmlFor="threshold">Threshold: {threshold.toFixed(2)}</label>

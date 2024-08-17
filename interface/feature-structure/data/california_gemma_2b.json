@@ -1,0 +1,49 @@
+[
+	{
+		"feature": 15691,
+		"from": {
+			"feature": 6427,
+			"value": 0.8051769137382507
+		}
+	},
+	{
+		"feature": 6427,
+		"from": null
+	},
+	{
+		"feature": 5388,
+		"from": null
+	},
+	{
+		"feature": 10576,
+		"from": {
+			"feature": 15601,
+			"value": 0.37737658619880676
+		}
+	},
+	{
+		"feature": 6367,
+		"from": {
+			"feature": 10200,
+			"value": 0.2944967746734619
+		}
+	},
+	{
+		"feature": 10164,
+		"from": {
+			"feature": 10200,
+			"value": 0.5134179592132568
+		}
+	},
+	{
+		"feature": 15601,
+		"from": {
+			"feature": 10200,
+			"value": 0.6603646874427795
+		}
+	},
+	{
+		"feature": 10200,
+		"from": null
+	}
+]

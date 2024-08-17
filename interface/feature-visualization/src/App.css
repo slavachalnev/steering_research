@@ -1,0 +1,63 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+
+#root {
+  overflow-y: scroll;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+#root::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none; /* Chrome, Safari, and Opera */
+}
+
+
+@keyframes loadingAnimation {
+  0% { content: '.'; }
+  33% { content: '..'; }
+  66% { content: '...'; }
+}
+
+.loading-text::after {
+  content: '';
+  animation: loadingAnimation 1s infinite;
+}
+
+/* Add feature container */
+
+.add-feature-container {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 200px;
+  height: 40px;
+}
+
+.add-icon {
+  font-size: 24px;
+  cursor: pointer;
+  transition: opacity 0.1s ease-in-out;
+}
+
+.feature-input {
+  width: 0;
+  padding: 5px;
+  border: none;
+  border-bottom: 2px solid #ccc;
+  font-size: 16px;
+  transition: width 0.1s ease-in-out;
+  outline: none;
+}
+
+.feature-input:focus {
+  width: 100%;
+}
+
