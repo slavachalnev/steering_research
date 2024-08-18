@@ -6,7 +6,7 @@ sys.path.append(os.path.abspath('..'))
 import torch
 from torch import nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset, Dataset
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import plotly.express as px
 import plotly.graph_objects as go
@@ -115,14 +115,29 @@ class NonLinearAdapter(nn.Module):
 
 
 # %%
-dataset = TensorDataset(features, effects)
-dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
+class NoisyDataset(Dataset):
+    def __init__(self, features, effects, noise_std=0.01):
+        self.features = features
+        self.effects = effects
+        self.noise_std = noise_std
+
+    def __len__(self):
+        return len(self.features)
+
+    def __getitem__(self, idx):
+        feature = self.features[idx]
+        effect = self.effects[idx]
+        noisy_feature = feature + torch.randn_like(feature) * self.noise_std
+        return noisy_feature, effect
+
+# noisy_dataset = NoisyDataset(features, effects)
+noisy_dataset = TensorDataset(features, effects)
 val_dataset = TensorDataset(val_features, val_effects)
+dataloader = DataLoader(noisy_dataset, batch_size=64, shuffle=True)
 val_dataloader = DataLoader(val_dataset, batch_size=64, shuffle=False)
 
 def train(num_epochs, lr=1e-4):
     opt = torch.optim.Adam(adapter.parameters(), lr=lr)
-
     scheduler = CosineAnnealingLR(opt, T_max=num_epochs)
 
     for epoch in range(num_epochs):
@@ -185,14 +200,16 @@ def find_optimal_steer(target, d_model, important_id=None, n_steps=int(1e4), ret
     pbar = tqdm(range(n_steps), desc="Optimizing")
     for step in pbar:
         optim.zero_grad()
-        # add noise to the input
-        pred = adapter(steer + torch.randn_like(steer) * 0.05)
+        noised_steer = steer + torch.randn_like(steer) * 0.01
+        pred = adapter(noised_steer)
+        # pred = adapter(steer)
 
-        if important_id is not None:
-            loss = (pred[important_id] - target[important_id])**2
+        weights = torch.ones_like(target)
+        weights[important_id] = 1000
 
-        else:
-            loss = F.mse_loss(pred, target)
+        # loss = (pred[important_id] - target[important_id])**2
+        # loss = F.mse_loss(pred, target)
+        loss = (((pred - target) * weights)**2).sum()
 
         loss.backward()
         optim.step()
@@ -211,20 +228,20 @@ def find_optimal_steer(target, d_model, important_id=None, n_steps=int(1e4), ret
 # %%
 target = torch.zeros(sae.W_enc.shape[1])
 
-ft_name = "london"
-ft_id = 14455 # london
-target[ft_id] = 1 # london
-# target[3931] = 0.5 # uk
-criterion = "Text mentions London or anything related to London."
+# ft_name = "london"
+# ft_id = 14455 # london
+# target[ft_id] = 1 # london
+# # target[3931] = 0.2 # uk
+# criterion = "Text mentions London or anything related to London."
 
-# ft_name = "wedding"
-# ft_id = 4230 # wedding
-# target[ft_id] = 5 # wedding
-# criterion = "Text mentions weddings or anything related to weddings."
+ft_name = "wedding"
+ft_id = 4230 # wedding
+target[ft_id] = 1 # wedding
+criterion = "Text mentions weddings or anything related to weddings."
 
 # ft_name = "bridge"
 # ft_id = 7272
-# target[ft_id] = 5
+# target[ft_id] = 1
 # criterion = "Text mentions bridges or anything related to bridges."
 
 # ft_name = "bird"
@@ -299,7 +316,7 @@ fig.show()
 
 
 # %%
-optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(5000), important_id=ft_id)
+optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(1e3), important_id=ft_id)
 with torch.no_grad():
     optimal_steer = optimal_steer / torch.norm(optimal_steer)
 
