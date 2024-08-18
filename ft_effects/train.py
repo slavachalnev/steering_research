@@ -114,26 +114,9 @@ class NonLinearAdapter(nn.Module):
         return x
 
 
-# %%
-class NoisyDataset(Dataset):
-    def __init__(self, features, effects, noise_std=0.01):
-        self.features = features
-        self.effects = effects
-        self.noise_std = noise_std
-
-    def __len__(self):
-        return len(self.features)
-
-    def __getitem__(self, idx):
-        feature = self.features[idx]
-        effect = self.effects[idx]
-        noisy_feature = feature + torch.randn_like(feature) * self.noise_std
-        return noisy_feature, effect
-
-# noisy_dataset = NoisyDataset(features, effects)
-noisy_dataset = TensorDataset(features, effects)
+dataset = TensorDataset(features, effects)
 val_dataset = TensorDataset(val_features, val_effects)
-dataloader = DataLoader(noisy_dataset, batch_size=64, shuffle=True)
+dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
 val_dataloader = DataLoader(val_dataset, batch_size=64, shuffle=False)
 
 def train(num_epochs, lr=1e-4):
@@ -183,38 +166,29 @@ def train(num_epochs, lr=1e-4):
 adapter = LinearAdapter(sae)
 # adapter = NonLinearAdapter(sae)
 adapter.to(device)
-train(20, lr=2e-4)
+train(15, lr=2e-4)
 
 torch.save(adapter.state_dict(), "adapter.pt")
 # %%
 # %%
 
-def find_optimal_steer(target, d_model, important_id=None, n_steps=int(1e4), return_intermediate=False):
+def find_optimal_steer(target, d_model, n_steps=int(1e4), return_intermediate=False):
     steer = torch.zeros(d_model, requires_grad=True, device=device)
     steer = steer.to(device)
     target = target.to(device)
 
-    optim = torch.optim.Adam([steer], lr=1e-4)
+    optim = torch.optim.Adam([steer], lr=5e-5)
 
     intermediates = []
     pbar = tqdm(range(n_steps), desc="Optimizing")
     for step in pbar:
         optim.zero_grad()
-        noised_steer = steer + torch.randn_like(steer) * 0.01
-        pred = adapter(noised_steer)
-        # pred = adapter(steer)
-
-        weights = torch.ones_like(target)
-        weights[important_id] = 1000
-
-        # loss = (pred[important_id] - target[important_id])**2
-        # loss = F.mse_loss(pred, target)
-        loss = (((pred - target) * weights)**2).sum()
-
+        pred = adapter(steer)
+        loss = F.mse_loss(pred, target)
         loss.backward()
         optim.step()
 
-        if step % 1000 == 0:
+        if step % 100 == 0:
             pbar.set_postfix({"loss": f"{loss.item():.6f}"})
             if return_intermediate:
                 intermediates.append(steer.detach().cpu())
@@ -228,25 +202,24 @@ def find_optimal_steer(target, d_model, important_id=None, n_steps=int(1e4), ret
 # %%
 target = torch.zeros(sae.W_enc.shape[1])
 
-# ft_name = "london"
-# ft_id = 14455 # london
-# target[ft_id] = 1 # london
-# # target[3931] = 0.2 # uk
-# criterion = "Text mentions London or anything related to London."
+ft_name = "london"
+ft_id = 14455 # london
+target[ft_id] = 100 # london
+criterion = "Text mentions London or anything related to London."
 
-ft_name = "wedding"
-ft_id = 4230 # wedding
-target[ft_id] = 1 # wedding
-criterion = "Text mentions weddings or anything related to weddings."
+# ft_name = "wedding"
+# ft_id = 4230 # wedding
+# target[ft_id] = 100 # wedding
+# criterion = "Text mentions weddings or anything related to weddings."
 
 # ft_name = "bridge"
 # ft_id = 7272
-# target[ft_id] = 1
+# target[ft_id] = 100
 # criterion = "Text mentions bridges or anything related to bridges."
 
 # ft_name = "bird"
 # ft_id = 1842
-# target[ft_id] = 5
+# target[ft_id] = 100
 # criterion = "Text mentions birds or anything related to birds."
 
 # %%
@@ -254,14 +227,14 @@ criterion = "Text mentions weddings or anything related to weddings."
 optimal_steer, intermediates = find_optimal_steer(
     target,
     sae.W_enc.shape[0],
-    n_steps=int(1e4),
+    n_steps=int(1e3),
     return_intermediate=True,
     important_id=ft_id
     )
 # %%
 # plot norms
 inter_norms = [torch.norm(i).item() for i in intermediates]
-steps = list(range(0, len(inter_norms) * 1000, 1000))  # Assuming intermediates are saved every 1000 steps
+steps = list(range(0, len(inter_norms) * 100, 100))  # Assuming intermediates are saved every 100 steps
 fig = go.Figure()
 fig.add_trace(go.Scatter(x=steps, y=inter_norms))
 fig.update_layout(
@@ -270,27 +243,19 @@ fig.update_layout(
     yaxis_title="Norm"
 )
 fig.show()
-# %%
-# plot inter norms deltas
-inter_norms_deltas = [inter_norms[i+1] - inter_norms[i] for i in range(len(inter_norms)-1)]
-steps_deltas = list(range(1000, len(inter_norms_deltas) * 1000 + 1000, 1000))  # Adjusted for deltas
-fig = go.Figure()
-fig.add_trace(go.Scatter(x=steps_deltas, y=inter_norms_deltas))
-fig.update_layout(
-    title="Change in Norm Between Consecutive Intermediate Vectors",
-    xaxis_title="Steps",
-    yaxis_title="Norm Delta"
-)
-fig.show()
-# %%
 
 target_values = []
 other_values = []
+post_norm_target_values = []
+post_norm_other_values = []
 for intermediate in intermediates:
     with torch.no_grad():
         prediction = adapter(intermediate.to(device))
+        post_norm_prediction = adapter(intermediate.to(device) / torch.norm(intermediate.to(device)))
     target_values.append(prediction[ft_id].item())
     other_values.append(sum(value for idx, value in enumerate(prediction) if idx != ft_id).item())
+    post_norm_target_values.append(post_norm_prediction[ft_id].item())
+    post_norm_other_values.append(sum(value for idx, value in enumerate(post_norm_prediction) if idx != ft_id).item())
 
 # Plot target values and other values
 fig = go.Figure()
@@ -302,6 +267,26 @@ fig.update_layout(
     yaxis_title="Feature Values"
 )
 fig.show()
+
+# Plot post norm target values
+fig1 = go.Figure()
+fig1.add_trace(go.Scatter(x=steps, y=post_norm_target_values, name="Target Feature"))
+fig1.update_layout(
+    title=f"Post-norm Target Feature ({ft_id}) Values During Optimization",
+    xaxis_title="Steps",
+    yaxis_title="Feature Value"
+)
+fig1.show()
+
+# Plot post norm other features values
+fig2 = go.Figure()
+fig2.add_trace(go.Scatter(x=steps, y=post_norm_other_values, name="Other Features"))
+fig2.update_layout(
+    title=f"Post-norm Other Features Values During Optimization",
+    xaxis_title="Steps",
+    yaxis_title="Sum of Feature Values"
+)
+fig2.show()
 
 # Plot target values
 fig = go.Figure()
@@ -316,7 +301,7 @@ fig.show()
 
 
 # %%
-optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(1e3), important_id=ft_id)
+optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(100))
 with torch.no_grad():
     optimal_steer = optimal_steer / torch.norm(optimal_steer)
 
@@ -405,11 +390,11 @@ def compute_scores(steer, name, criterion, make_plot=True, scales=None):
 
 # %%
 # compute_scores(optimal_steer, f"{ft_name}_optimised", criterion)
-compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, scales=list(range(0, 200, 30)))
+_ = compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, scales=list(range(0, 200, 20)))
 
 # %%
 
-compute_scores(sae.W_dec[ft_id], f"{ft_name}_decoder", criterion)
+_ = compute_scores(sae.W_dec[ft_id], f"{ft_name}_decoder", criterion)
 
 
 
@@ -418,7 +403,7 @@ compute_scores(sae.W_dec[ft_id], f"{ft_name}_decoder", criterion)
 # step_options = [1e3, 2e3, 4e3, 6e3, 8e3, 1e4, 2e4, 5e4, 1e5]
 # step_options = [20, 40, 60, 80, 1e2, 5e2, 8e2, 1e3]#, 2e3, 4e3, 6e3, 8e3]
 # step_options = [40, 60, 80, 100, 200, 500, 1e3, 2e3, 4e3, 1e4, 2e4]
-step_options = [50, 100, 200, 500, 1e3, 2e3, 4e3, 1e4, 2e4]
+step_options = [50, 80, 100, 150, 200]
 def step_sweep():
     # sweep n_steps
     scales = list(range(0, 220, 20))
@@ -426,7 +411,7 @@ def step_sweep():
     coherences = []
     products = []
     for step in step_options:
-        optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(step), important_id=ft_id)
+        optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(step))
         with torch.no_grad():
             optimal_steer = optimal_steer / torch.norm(optimal_steer)
         s, c, p = compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, make_plot=False, scales=scales)
