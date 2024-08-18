@@ -47,8 +47,6 @@ for path in paths:
 
 features = torch.cat(features)
 effects = torch.cat(effects)
-print(features.shape)
-print(effects.shape)
 
 # normalise features to have norm 1
 features = features / torch.norm(features, dim=-1, keepdim=True)
@@ -63,10 +61,6 @@ print(features.shape)
 print(effects.shape)
 print(val_features.shape)
 print(val_effects.shape)
-
-# val_ft_norms = torch.norm(val_features, dim=-1)
-# fig = px.histogram(val_ft_norms)
-# fig.show()
 
 # %%
 
@@ -91,27 +85,11 @@ class LinearAdapter(nn.Module):
     def __init__(self, sae):
         super().__init__()
         self.d_model, self.d_sae = sae.W_enc.shape
-        # self.W = nn.Parameter(sae.W_enc.detach().clone())
         self.W = nn.Parameter(nn.init.kaiming_uniform_(torch.empty(self.d_model, self.d_sae)))
         self.b = nn.Parameter(torch.zeros(self.d_sae))
 
     def forward(self, x):
         return x @ self.W + self.b
-
-class NonLinearAdapter(nn.Module):
-    def __init__(self, sae):
-        super().__init__()
-        self.d_model, self.d_sae = sae.W_enc.shape
-        self.W1 = nn.Parameter(nn.init.kaiming_uniform_(torch.empty(self.d_model, self.d_sae)))
-        self.b1 = nn.Parameter(torch.zeros(self.d_sae))
-        self.W2 = nn.Parameter(nn.init.kaiming_uniform_(torch.empty(self.d_sae, self.d_sae)))
-        self.b2 = nn.Parameter(torch.zeros(self.d_sae))
-
-    def forward(self, x):
-        x = x @ self.W1 + self.b1
-        x = F.relu(x)
-        x = x @ self.W2 + self.b2
-        return x
 
 
 dataset = TensorDataset(features, effects)
@@ -164,21 +142,17 @@ def train(num_epochs, lr=1e-4):
 
 # %%
 adapter = LinearAdapter(sae)
-# adapter = NonLinearAdapter(sae)
 adapter.to(device)
 train(15, lr=2e-4)
 
 torch.save(adapter.state_dict(), "adapter.pt")
-# %%
 # %%
 
 def find_optimal_steer(target, d_model, n_steps=int(1e4), return_intermediate=False):
     steer = torch.zeros(d_model, requires_grad=True, device=device)
     steer = steer.to(device)
     target = target.to(device)
-
     optim = torch.optim.Adam([steer], lr=5e-5)
-
     intermediates = []
     pbar = tqdm(range(n_steps), desc="Optimizing")
     for step in pbar:
@@ -187,12 +161,10 @@ def find_optimal_steer(target, d_model, n_steps=int(1e4), return_intermediate=Fa
         loss = F.mse_loss(pred, target)
         loss.backward()
         optim.step()
-
-        if step % 100 == 0:
+        if step % 10 == 0:
             pbar.set_postfix({"loss": f"{loss.item():.6f}"})
             if return_intermediate:
                 intermediates.append(steer.detach().cpu())
-
     if return_intermediate:
         return steer.detach(), intermediates
     else:
@@ -201,25 +173,26 @@ def find_optimal_steer(target, d_model, n_steps=int(1e4), return_intermediate=Fa
 
 # %%
 target = torch.zeros(sae.W_enc.shape[1])
+target_value = 100
 
 ft_name = "london"
 ft_id = 14455 # london
-target[ft_id] = 100 # london
+target[ft_id] = target_value # london
 criterion = "Text mentions London or anything related to London."
 
 # ft_name = "wedding"
 # ft_id = 4230 # wedding
-# target[ft_id] = 100 # wedding
+# target[ft_id] = target_value # wedding
 # criterion = "Text mentions weddings or anything related to weddings."
 
 # ft_name = "bridge"
 # ft_id = 7272
-# target[ft_id] = 100
+# target[ft_id] = target_value
 # criterion = "Text mentions bridges or anything related to bridges."
 
 # ft_name = "bird"
 # ft_id = 1842
-# target[ft_id] = 100
+# target[ft_id] = target_value
 # criterion = "Text mentions birds or anything related to birds."
 
 # %%
@@ -229,12 +202,11 @@ optimal_steer, intermediates = find_optimal_steer(
     sae.W_enc.shape[0],
     n_steps=int(1e3),
     return_intermediate=True,
-    important_id=ft_id
     )
 # %%
 # plot norms
 inter_norms = [torch.norm(i).item() for i in intermediates]
-steps = list(range(0, len(inter_norms) * 100, 100))  # Assuming intermediates are saved every 100 steps
+steps = list(range(0, len(inter_norms) * 10, 10))  # Assuming intermediates are saved every 100 steps
 fig = go.Figure()
 fig.add_trace(go.Scatter(x=steps, y=inter_norms))
 fig.update_layout(
