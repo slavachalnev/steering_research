@@ -21,7 +21,8 @@ def load_act_steer(dir_path):
         val_examples = data['validation']
     else:
         val_examples = []
-    return pos_examples, neg_examples, val_examples
+    layer = data['layer']
+    return pos_examples, neg_examples, val_examples, layer
 
 def chat_to_prompt(chat, model):
     # chat is a list of dictionaries with keys 'role' and 'content'. 'role' is either 'user' or 'model'.
@@ -91,7 +92,7 @@ if __name__ == "__main__":
 
 # %%
 if __name__ == "__main__":
-    pos_examples, neg_examples, val_examples = load_act_steer("steer_cfgs/golden_gate")
+    pos_examples, neg_examples, val_examples, layer = load_act_steer("steer_cfgs/golden_gate")
     use_chat = isinstance(pos_examples[0], dict)
     steer = get_activation_steering(model, pos_examples, neg_examples, device)
 

@@ -68,15 +68,16 @@ def plot(path, coherence, score, scales, method):
     fig.add_trace(go.Scatter(x=scales, y=score, mode='lines', name='Score'))
     fig.add_trace(go.Scatter(x=scales, y=product, mode='lines', name='Coherence * Score'))
     fig.update_layout(
-        title=f'Coherence, Score, and Their Product vs Scale for {path} ({method})',
+        title=f'Steering Analysis for {path} ({method})',
         xaxis_title='Scale',
         yaxis_title='Value',
-        legend_title='Metric'
+        legend_title='Metric',
+        yaxis=dict(range=[0, 1])
     )
-    fig.write_image(os.path.join(path, f"scores_{method}.png"))
+    fig.write_image(os.path.join(path, f"scores_{method}.png"), scale=2)
 
 def analyse_steer(model, steer, layer, path, method='activation_steering'):
-    scales = list(range(0, 200, 10))
+    scales = list(range(0, 320, 20))
     with open(os.path.join(path, "criteria.json"), 'r') as f:
         criteria = json.load(f)
     with open(os.path.join(path, "prompts.json"), 'r') as f:
@@ -114,7 +115,8 @@ def analyse_steer(model, steer, layer, path, method='activation_steering'):
 if __name__ == "__main__":
     torch.set_grad_enabled(False)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = HookedTransformer.from_pretrained("google/gemma-2b", device=device)
+    # model = HookedTransformer.from_pretrained("google/gemma-2b", device=device)
+    model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device)
 
 # %%
 if __name__ == "__main__":
@@ -126,22 +128,27 @@ if __name__ == "__main__":
         # "steer_cfgs/conspiracy",
         # "steer_cfgs/french",
         # "steer_cfgs/golden_gate",
-        "steer_cfgs/london",
+        # "steer_cfgs/london",
         # "steer_cfgs/love",
         # "steer_cfgs/praise",
         # "steer_cfgs/want_to_die",
         # "steer_cfgs/wedding",
         # "steer_cfgs/praise_2"
     ]
-    act_steer_layers = [6, 6, 10, 6, 6, 6, 6, 6, 6, 6, 6, 10]
+    paths = [
+        "steer_cfgs/london_g2",
+        "steer_cfgs/wedding_g2"
+    ]
+    # act_steer_layers = [6, 6, 10, 6, 6, 6, 6, 6, 6, 6, 6, 10]
+    act_steer_layers = [12, 12]
 
-    for path, layer in zip(paths, act_steer_layers):
+    for path in paths:
         # # Activation Steering
-        # print("activation steering")
-        # pos_examples, neg_examples, val_examples = load_act_steer(path)
-        # steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
-        # steer = steer / torch.norm(steer, dim=-1, keepdim=True)
-        # analyse_steer(model, steer, layer, path, method='activation_steering')
+        print("activation steering")
+        pos_examples, neg_examples, val_examples, layer = load_act_steer(path)
+        steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
+        steer = steer / torch.norm(steer, dim=-1, keepdim=True)
+        analyse_steer(model, steer, layer, path, method='ActSteer')
 
         # # CAA
         # dataset = load_dataset("Anthropic/model-written-evals", data_files="persona/anti-immigration.jsonl")['train']
@@ -156,11 +163,11 @@ if __name__ == "__main__":
         
         # analyse_steer(model, diffs[layer], layer, path, method='caa')
 
-        # sae steering
-        print("sae steering")
-        steer, hp, layer = load_sae_steer(path)
-        steer = steer.to(device)
-        analyse_steer(model, steer, layer, path, method='sae')
+        # # sae steering
+        # print("sae steering")
+        # steer, hp, layer = load_sae_steer(path)
+        # steer = steer.to(device)
+        # analyse_steer(model, steer, layer, path, method='sae')
     
     
 

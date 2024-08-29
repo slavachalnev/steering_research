@@ -11,7 +11,8 @@
 		"London parks and gardens",
 		"London's iconic red buses",
 		"Going to London",
-		"I love London"
+		"I love London",
+		"I think London is the best city in the world"
 	],
 	"neg": [
 		"Baking chocolate cake",
@@ -25,7 +26,9 @@
 		"Practicing yoga meditation",
 		"Brewing craft beer",
 		"Going to Sydney",
-		"I love New York"
+		"I love New York",
+		"I think San Francisco is the best city in the world"
 	],
-	"layer": 6
+	"layer": 12,
+	"hp": "blocks.12.hook_resid_post"
 }
