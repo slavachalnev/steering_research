@@ -179,6 +179,13 @@ def find_optimal_steer(target, d_model, n_steps=int(1e4), return_intermediate=Fa
     else:
         return steer.detach()
 
+def single_step_steer(target, bias_scale=1e-2):
+    steer_vec = adapter.W @ target.to(device)
+    steer_vec = steer_vec / torch.norm(steer_vec)
+    bias_vec = adapter.W @ adapter.b
+    bias_vec = bias_vec / torch.norm(bias_vec)
+    bias_vec = bias_vec * bias_scale
+    return steer_vec - bias_vec
 
 # %%
 target = torch.zeros(sae.W_enc.shape[1])
@@ -295,6 +302,8 @@ print(adapter.W.shape)
 # optimal_steer = find_optimal_steer(torch.zeros_like(target), sae.W_enc.shape[0], n_steps=int(1))
 # optimal_steer = adapter.compute_optimal_input(torch.zeros_like(target))
 
+optimal_steer = single_step_steer(target, bias_scale=1.5)
+
 with torch.no_grad():
     optimal_steer = optimal_steer / torch.norm(optimal_steer)
 
@@ -326,6 +335,11 @@ print("sae_65k top_indices:", top_indices)
 
 
 # %%
+old_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=1, target_scale=100)
+old_steer = old_steer / torch.norm(old_steer)
+old_steer = old_steer.cpu()
+print((optimal_steer @ old_steer) / (torch.norm(optimal_steer) * torch.norm(old_steer)))
+
 # %%
 ####### steer ######
 
@@ -393,10 +407,7 @@ _ = compute_scores(sae.W_dec[ft_id], f"{ft_name}_decoder", criterion)
 
 
 # %%
-
 # step_options = [1e3, 2e3, 4e3, 6e3, 8e3, 1e4, 2e4, 5e4, 1e5]
-# step_options = [20, 40, 60, 80, 1e2, 5e2, 8e2, 1e3]#, 2e3, 4e3, 6e3, 8e3]
-# step_options = [40, 60, 80, 100, 200, 500, 1e3, 2e3, 4e3, 1e4, 2e4]
 step_options = [50, 80, 100, 150, 200]
 def step_sweep():
     # sweep n_steps
@@ -433,10 +444,44 @@ def step_sweep():
     fig.show()
     fig.write_image(f"analysis_out/{ft_name}_step_options_analysis.png")
     return scores, coherences, products
-
-
 scores, coherences, products = step_sweep()
 
+# %%
+bias_scales = [0, 0.5, 0.8, 1, 1.2, 1.5, 1.8, 2, 2.5, 3, 10]
+def bias_sweep():
+    scales = list(range(0, 220, 20))
+    scores = []
+    coherences = []
+    products = []
+    for bias_scale in bias_scales:
+        optimal_steer = single_step_steer(target, bias_scale=bias_scale)
+        with torch.no_grad():
+            optimal_steer = optimal_steer / torch.norm(optimal_steer)
+        s, c, p = compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, make_plot=False, scales=scales)
+        scores.append(s)
+        coherences.append(c)
+        products.append(p)
+        print(p)
+
+    fig = go.Figure()
+    for i, bias_scale in enumerate(bias_scales):
+        fig.add_trace(go.Scatter(
+            x=scales,
+            y=products[i],
+            mode='lines',
+            name=f'{bias_scale} bias scale'
+        ))
+    fig.update_layout(
+        title='Score Product vs Scale for Different Bias Scales',
+        xaxis_title='Scale',
+        yaxis_title='Score Product',
+        legend_title='Bias Scale',
+        yaxis=dict(range=[0, 1])  # Set y-axis range from 0 to 1
+    )
+    fig.show()
+    fig.write_image(f"analysis_out/{ft_name}_bias_options_analysis.png")
+    return scores, coherences, products
+scores, coherences, products = bias_sweep()
 
 
 # %%
