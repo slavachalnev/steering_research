@@ -90,6 +90,13 @@ class LinearAdapter(nn.Module):
 
     def forward(self, x):
         return x @ self.W + self.b
+    
+    @torch.no_grad()
+    def compute_optimal_input(self, y):
+        y_dev = y.device
+        W_pinv = torch.linalg.pinv(self.W)
+        x_optimal = (y.to(self.W.device) - self.b) @ W_pinv
+        return x_optimal.to(y_dev)
 
 
 dataset = TensorDataset(features, effects)
@@ -148,11 +155,13 @@ train(15, lr=2e-4)
 torch.save(adapter.state_dict(), "adapter.pt")
 # %%
 
-def find_optimal_steer(target, d_model, n_steps=int(1e4), return_intermediate=False):
+def find_optimal_steer(target, d_model, n_steps=int(1e4), return_intermediate=False, target_scale=1):
     steer = torch.zeros(d_model, requires_grad=True, device=device)
     steer = steer.to(device)
     target = target.to(device)
-    optim = torch.optim.Adam([steer], lr=5e-5)
+    target = target * target_scale
+    # optim = torch.optim.Adam([steer], lr=5e-5)
+    optim = torch.optim.SGD([steer], lr=5e-5)
     intermediates = []
     pbar = tqdm(range(n_steps), desc="Optimizing")
     for step in pbar:
@@ -173,7 +182,8 @@ def find_optimal_steer(target, d_model, n_steps=int(1e4), return_intermediate=Fa
 
 # %%
 target = torch.zeros(sae.W_enc.shape[1])
-target_value = 100
+target_value = 1
+
 
 ft_name = "london"
 ft_id = 14455 # london
@@ -271,9 +281,20 @@ fig.update_layout(
 fig.show()
 
 
+# %%
+# optimal_steer = adapter.compute_optimal_input(target)
+# print(optimal_steer.shape)
+# print(torch.norm(optimal_steer))
+
+print(adapter.W.shape)
 
 # %%
-optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(100))
+# optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(1), target_scale=100)
+# optimal_steer = adapter.W[:, ft_id]
+
+# optimal_steer = find_optimal_steer(torch.zeros_like(target), sae.W_enc.shape[0], n_steps=int(1))
+# optimal_steer = adapter.compute_optimal_input(torch.zeros_like(target))
+
 with torch.no_grad():
     optimal_steer = optimal_steer / torch.norm(optimal_steer)
 
@@ -363,6 +384,7 @@ def compute_scores(steer, name, criterion, make_plot=True, scales=None):
 # %%
 # compute_scores(optimal_steer, f"{ft_name}_optimised", criterion)
 _ = compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, scales=list(range(0, 200, 20)))
+# _ = compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, scales=list(range(100, 300, 20)))
 
 # %%
 
@@ -438,6 +460,22 @@ fig.update_layout(
 )
 fig.show()
 fig.write_image(f"analysis_out/{ft_name}_max_product_vs_steps.png")
+
+
+
+# %%
+# bias values histogram
+b = adapter.b.detach().cpu()
+# fig = px.histogram(b, nbins=100)
+# fig.show()
+
+top_v, top_i = torch.topk(b, 10)
+print(top_v)
+print(top_i)
+
+bottom_v, bottom_i = torch.topk(-b, 10)
+print(bottom_v)
+print(bottom_i)
 
 
 
