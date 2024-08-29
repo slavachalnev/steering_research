@@ -28,42 +28,6 @@ from steering.evals_utils import multi_criterion_evaluation
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-paths = [
-    "effects/G2_2B_L12/65k_from_0",
-    "effects/G2_2B_L12/65k_from_10k",
-    "effects/G2_2B_L12/65k_from_20k",
-    "effects/G2_2B_L12/65k_from_30k",
-    "effects/G2_2B_L12/65k_from_40k",
-    "effects/G2_2B_L12/16k_from_0",
-    # "effects/G2_2B_L12/multi_16k_from_0",
-]
-
-features = []
-effects = []
-
-for path in paths:
-    features.append(torch.load(os.path.join(path, "used_features.pt")))
-    effects.append(torch.load(os.path.join(path, "all_effects.pt")))
-
-features = torch.cat(features)
-effects = torch.cat(effects)
-
-# normalise features to have norm 1
-features = features / torch.norm(features, dim=-1, keepdim=True)
-
-val_features = features[-100:]
-val_effects = effects[-100:]
-features = features[:-100]
-effects = effects[:-100]
-
-# %%
-print(features.shape)
-print(effects.shape)
-print(val_features.shape)
-print(val_effects.shape)
-
-# %%
-
 @torch.no_grad()
 def get_sae():
     path_to_params = hf_hub_download(
@@ -82,11 +46,10 @@ sae = get_sae()
 # %%
 
 class LinearAdapter(nn.Module):
-    def __init__(self, sae):
+    def __init__(self, d_model, d_sae):
         super().__init__()
-        self.d_model, self.d_sae = sae.W_enc.shape
-        self.W = nn.Parameter(nn.init.kaiming_uniform_(torch.empty(self.d_model, self.d_sae)))
-        self.b = nn.Parameter(torch.zeros(self.d_sae))
+        self.W = nn.Parameter(nn.init.kaiming_uniform_(torch.empty(d_model, d_sae)))
+        self.b = nn.Parameter(torch.zeros(d_sae))
 
     def forward(self, x):
         return x @ self.W + self.b
@@ -98,13 +61,40 @@ class LinearAdapter(nn.Module):
         x_optimal = (y.to(self.W.device) - self.b) @ W_pinv
         return x_optimal.to(y_dev)
 
-
-dataset = TensorDataset(features, effects)
-val_dataset = TensorDataset(val_features, val_effects)
-dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
-val_dataloader = DataLoader(val_dataset, batch_size=64, shuffle=False)
-
 def train(num_epochs, lr=1e-4):
+    paths = [
+        "effects/G2_2B_L12/65k_from_0",
+        "effects/G2_2B_L12/65k_from_10k",
+        "effects/G2_2B_L12/65k_from_20k",
+        "effects/G2_2B_L12/65k_from_30k",
+        "effects/G2_2B_L12/65k_from_40k",
+        "effects/G2_2B_L12/16k_from_0",
+        # "effects/G2_2B_L12/multi_16k_from_0",
+    ]
+
+    features = []
+    effects = []
+
+    for path in paths:
+        features.append(torch.load(os.path.join(path, "used_features.pt")))
+        effects.append(torch.load(os.path.join(path, "all_effects.pt")))
+
+    features = torch.cat(features)
+    effects = torch.cat(effects)
+
+    # normalise features to have norm 1
+    features = features / torch.norm(features, dim=-1, keepdim=True)
+
+    val_features = features[-100:]
+    val_effects = effects[-100:]
+    features = features[:-100]
+    effects = effects[:-100]
+
+    dataset = TensorDataset(features, effects)
+    val_dataset = TensorDataset(val_features, val_effects)
+    dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=64, shuffle=False)
+
     opt = torch.optim.Adam(adapter.parameters(), lr=lr)
     scheduler = CosineAnnealingLR(opt, T_max=num_epochs)
 
@@ -148,14 +138,15 @@ def train(num_epochs, lr=1e-4):
 
 
 # %%
-adapter = LinearAdapter(sae)
-adapter.to(device)
-train(15, lr=2e-4)
+if __name__ == "__main__":
+    adapter = LinearAdapter(sae.W_enc.shape[0], sae.W_enc.shape[1])
+    adapter.to(device)
+    train(15, lr=2e-4)
 
-torch.save(adapter.state_dict(), "adapter.pt")
+    torch.save(adapter.state_dict(), "adapter.pt")
 # %%
 
-def find_optimal_steer(target, d_model, n_steps=int(1e4), return_intermediate=False, target_scale=1):
+def find_optimal_steer(adapter, target, d_model, n_steps=int(1e4), return_intermediate=False, target_scale=1):
     steer = torch.zeros(d_model, requires_grad=True, device=device)
     steer = steer.to(device)
     target = target.to(device)
@@ -179,7 +170,7 @@ def find_optimal_steer(target, d_model, n_steps=int(1e4), return_intermediate=Fa
     else:
         return steer.detach()
 
-def single_step_steer(target, bias_scale=1e-2):
+def single_step_steer(adapter, target, bias_scale=1e-2):
     steer_vec = adapter.W @ target.to(device)
     steer_vec = steer_vec / torch.norm(steer_vec)
     bias_vec = adapter.W @ adapter.b
@@ -212,139 +203,61 @@ criterion = "Text mentions London or anything related to London."
 # target[ft_id] = target_value
 # criterion = "Text mentions birds or anything related to birds."
 
-# %%
-# compute intermediate
-optimal_steer, intermediates = find_optimal_steer(
-    target,
-    sae.W_enc.shape[0],
-    n_steps=int(1e3),
-    return_intermediate=True,
-    )
-# %%
-# plot norms
-inter_norms = [torch.norm(i).item() for i in intermediates]
-steps = list(range(0, len(inter_norms) * 10, 10))  # Assuming intermediates are saved every 100 steps
-fig = go.Figure()
-fig.add_trace(go.Scatter(x=steps, y=inter_norms))
-fig.update_layout(
-    title="Norm of Intermediate Vectors During Optimization",
-    xaxis_title="Steps",
-    yaxis_title="Norm"
-)
-fig.show()
-
-target_values = []
-other_values = []
-post_norm_target_values = []
-post_norm_other_values = []
-for intermediate in intermediates:
-    with torch.no_grad():
-        prediction = adapter(intermediate.to(device))
-        post_norm_prediction = adapter(intermediate.to(device) / torch.norm(intermediate.to(device)))
-    target_values.append(prediction[ft_id].item())
-    other_values.append(sum(value for idx, value in enumerate(prediction) if idx != ft_id).item())
-    post_norm_target_values.append(post_norm_prediction[ft_id].item())
-    post_norm_other_values.append(sum(value for idx, value in enumerate(post_norm_prediction) if idx != ft_id).item())
-
-# Plot target values and other values
-fig = go.Figure()
-fig.add_trace(go.Scatter(x=steps, y=target_values, name="Target Feature"))
-fig.add_trace(go.Scatter(x=steps, y=other_values, name="Other Features"))
-fig.update_layout(
-    title=f"Target Feature ({ft_id}) and Other Features Values During Optimization",
-    xaxis_title="Steps",
-    yaxis_title="Feature Values"
-)
-fig.show()
-
-# Plot post norm target values
-fig1 = go.Figure()
-fig1.add_trace(go.Scatter(x=steps, y=post_norm_target_values, name="Target Feature"))
-fig1.update_layout(
-    title=f"Post-norm Target Feature ({ft_id}) Values During Optimization",
-    xaxis_title="Steps",
-    yaxis_title="Feature Value"
-)
-fig1.show()
-
-# Plot post norm other features values
-fig2 = go.Figure()
-fig2.add_trace(go.Scatter(x=steps, y=post_norm_other_values, name="Other Features"))
-fig2.update_layout(
-    title=f"Post-norm Other Features Values During Optimization",
-    xaxis_title="Steps",
-    yaxis_title="Sum of Feature Values"
-)
-fig2.show()
-
-# Plot target values
-fig = go.Figure()
-fig.add_trace(go.Scatter(x=steps, y=target_values))
-fig.update_layout(
-    title=f"Target Feature ({ft_id}) Values During Optimization",
-    xaxis_title="Steps",
-    yaxis_title="Target Feature Value"
-)
-fig.show()
-
 
 # %%
-# optimal_steer = adapter.compute_optimal_input(target)
-# print(optimal_steer.shape)
-# print(torch.norm(optimal_steer))
-
-print(adapter.W.shape)
-
-# %%
-# optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(1), target_scale=100)
+# optimal_steer = find_optimal_steer(adapter, target, sae.W_enc.shape[0], n_steps=int(1), target_scale=100)
 # optimal_steer = adapter.W[:, ft_id]
 
-# optimal_steer = find_optimal_steer(torch.zeros_like(target), sae.W_enc.shape[0], n_steps=int(1))
+# optimal_steer = find_optimal_steer(adapter, torch.zeros_like(target), sae.W_enc.shape[0], n_steps=int(1))
 # optimal_steer = adapter.compute_optimal_input(torch.zeros_like(target))
 
-optimal_steer = single_step_steer(target, bias_scale=1.5)
+if __name__ == "__main__":
 
-with torch.no_grad():
-    optimal_steer = optimal_steer / torch.norm(optimal_steer)
+    optimal_steer = single_step_steer(adapter, target, bias_scale=1.5)
 
-optimal_steer = optimal_steer.cpu()
+    with torch.no_grad():
+        optimal_steer = optimal_steer / torch.norm(optimal_steer)
 
-# cosine sims between optimal steer and all vector of sae.W_dec
-sims = (sae.W_dec @ optimal_steer) / (torch.norm(sae.W_dec, dim=-1) * torch.norm(optimal_steer))
-# top sims
-top_sims, top_indices = torch.topk(sims, 10)
-print("sae_16k top_sims:", top_sims)
-print("sae_16k top_indices:", top_indices)
+    optimal_steer = optimal_steer.cpu()
 
-def get_sae_dec():
-    path_to_params = hf_hub_download(
-        repo_id="google/gemma-scope-2b-pt-res",
-        filename="layer_12/width_65k/average_l0_72/params.npz",
-        force_download=False)
-    params = np.load(path_to_params)
-    pt_params = {k: torch.from_numpy(v).cuda() for k, v in params.items()}
-    sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
-    sae.load_state_dict(pt_params)
-    return sae.W_dec
+    # cosine sims between optimal steer and all vector of sae.W_dec
+    sims = (sae.W_dec @ optimal_steer) / (torch.norm(sae.W_dec, dim=-1) * torch.norm(optimal_steer))
+    # top sims
+    top_sims, top_indices = torch.topk(sims, 10)
+    print("sae_16k top_sims:", top_sims)
+    print("sae_16k top_indices:", top_indices)
 
-sae_65k = get_sae_dec()
-sims = (sae_65k @ optimal_steer) / (torch.norm(sae_65k, dim=-1) * torch.norm(optimal_steer))
-top_sims, top_indices = torch.topk(sims, 10)
-print("sae_65k top_sims:", top_sims)
-print("sae_65k top_indices:", top_indices)
+    def get_sae_dec():
+        path_to_params = hf_hub_download(
+            repo_id="google/gemma-scope-2b-pt-res",
+            filename="layer_12/width_65k/average_l0_72/params.npz",
+            force_download=False)
+        params = np.load(path_to_params)
+        pt_params = {k: torch.from_numpy(v).cuda() for k, v in params.items()}
+        sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
+        sae.load_state_dict(pt_params)
+        return sae.W_dec
+
+    sae_65k = get_sae_dec()
+    sims = (sae_65k @ optimal_steer) / (torch.norm(sae_65k, dim=-1) * torch.norm(optimal_steer))
+    top_sims, top_indices = torch.topk(sims, 10)
+    print("sae_65k top_sims:", top_sims)
+    print("sae_65k top_indices:", top_indices)
 
 
 # %%
-old_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=1, target_scale=100)
-old_steer = old_steer / torch.norm(old_steer)
-old_steer = old_steer.cpu()
-print((optimal_steer @ old_steer) / (torch.norm(optimal_steer) * torch.norm(old_steer)))
+if __name__ == "__main__":
+    old_steer = find_optimal_steer(adapter, target, sae.W_enc.shape[0], n_steps=1, target_scale=100)
+    old_steer = old_steer / torch.norm(old_steer)
+    old_steer = old_steer.cpu()
+    print((optimal_steer @ old_steer) / (torch.norm(optimal_steer) * torch.norm(old_steer)))
 
 # %%
 ####### steer ######
 
-model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device)
-hp = "blocks.12.hook_resid_post"
+if __name__ == "__main__":
+    model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device)
+    hp = "blocks.12.hook_resid_post"
 
 
 # %%
@@ -396,13 +309,14 @@ def compute_scores(steer, name, criterion, make_plot=True, scales=None):
     return scores, coherences, products
 
 # %%
-# compute_scores(optimal_steer, f"{ft_name}_optimised", criterion)
-_ = compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, scales=list(range(0, 200, 20)))
-# _ = compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, scales=list(range(100, 300, 20)))
+if __name__ == "__main__":
+    # compute_scores(optimal_steer, f"{ft_name}_optimised", criterion)
+    _ = compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, scales=list(range(0, 200, 20)))
+    # _ = compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, scales=list(range(100, 300, 20)))
 
 # %%
-
-_ = compute_scores(sae.W_dec[ft_id], f"{ft_name}_decoder", criterion)
+if __name__ == "__main__":
+    _ = compute_scores(sae.W_dec[ft_id], f"{ft_name}_decoder", criterion)
 
 
 
@@ -416,7 +330,7 @@ def step_sweep():
     coherences = []
     products = []
     for step in step_options:
-        optimal_steer = find_optimal_steer(target, sae.W_enc.shape[0], n_steps=int(step))
+        optimal_steer = find_optimal_steer(adapter, target, sae.W_enc.shape[0], n_steps=int(step))
         with torch.no_grad():
             optimal_steer = optimal_steer / torch.norm(optimal_steer)
         s, c, p = compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, make_plot=False, scales=scales)
@@ -444,7 +358,9 @@ def step_sweep():
     fig.show()
     fig.write_image(f"analysis_out/{ft_name}_step_options_analysis.png")
     return scores, coherences, products
-scores, coherences, products = step_sweep()
+
+if __name__ == "__main__":
+    scores, coherences, products = step_sweep()
 
 # %%
 bias_scales = [0, 0.5, 0.8, 1, 1.2, 1.5, 1.8, 2, 2.5, 3, 10]
@@ -454,7 +370,7 @@ def bias_sweep():
     coherences = []
     products = []
     for bias_scale in bias_scales:
-        optimal_steer = single_step_steer(target, bias_scale=bias_scale)
+        optimal_steer = single_step_steer(adapter, target, bias_scale=bias_scale)
         with torch.no_grad():
             optimal_steer = optimal_steer / torch.norm(optimal_steer)
         s, c, p = compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, make_plot=False, scales=scales)
@@ -481,46 +397,50 @@ def bias_sweep():
     fig.show()
     fig.write_image(f"analysis_out/{ft_name}_bias_options_analysis.png")
     return scores, coherences, products
-scores, coherences, products = bias_sweep()
+
+if __name__ == "__main__":
+    scores, coherences, products = bias_sweep()
 
 
 # %%
 
+if __name__ == "__main__":
 
-max_products = [max(p) for p in products]
-# Create a figure for max product vs step
-fig = go.Figure()
-fig.add_trace(go.Scatter(
-    x=step_options,
-    y=max_products,
-    mode='lines+markers',
-    name='Max Product'
-))
-fig.update_layout(
-    title='Max Score Product vs Number of Steps',
-    xaxis_title='Number of Steps',
-    yaxis_title='Max Score Product',
-    xaxis=dict(type='log'),  # Use log scale for x-axis
-    yaxis=dict(range=[0, 1])  # Set y-axis range from 0 to 1
-)
-fig.show()
-fig.write_image(f"analysis_out/{ft_name}_max_product_vs_steps.png")
+    max_products = [max(p) for p in products]
+    # Create a figure for max product vs step
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=step_options,
+        y=max_products,
+        mode='lines+markers',
+        name='Max Product'
+    ))
+    fig.update_layout(
+        title='Max Score Product vs Number of Steps',
+        xaxis_title='Number of Steps',
+        yaxis_title='Max Score Product',
+        xaxis=dict(type='log'),  # Use log scale for x-axis
+        yaxis=dict(range=[0, 1])  # Set y-axis range from 0 to 1
+    )
+    fig.show()
+    fig.write_image(f"analysis_out/{ft_name}_max_product_vs_steps.png")
 
 
 
 # %%
-# bias values histogram
-b = adapter.b.detach().cpu()
-# fig = px.histogram(b, nbins=100)
-# fig.show()
+if __name__ == "__main__":
+    # bias values histogram
+    b = adapter.b.detach().cpu()
+    # fig = px.histogram(b, nbins=100)
+    # fig.show()
 
-top_v, top_i = torch.topk(b, 10)
-print(top_v)
-print(top_i)
+    top_v, top_i = torch.topk(b, 10)
+    print(top_v)
+    print(top_i)
 
-bottom_v, bottom_i = torch.topk(-b, 10)
-print(bottom_v)
-print(bottom_i)
+    bottom_v, bottom_i = torch.topk(-b, 10)
+    print(bottom_v)
+    print(bottom_i)
 
 
 
