@@ -69,7 +69,6 @@ def train(num_epochs, lr=1e-4):
         "effects/G2_2B_L12/65k_from_30k",
         "effects/G2_2B_L12/65k_from_40k",
         "effects/G2_2B_L12/16k_from_0",
-        # "effects/G2_2B_L12/multi_16k_from_0",
     ]
 
     features = []
@@ -84,11 +83,12 @@ def train(num_epochs, lr=1e-4):
 
     # normalise features to have norm 1
     features = features / torch.norm(features, dim=-1, keepdim=True)
+    n_val = 100
 
-    val_features = features[-100:]
-    val_effects = effects[-100:]
-    features = features[:-100]
-    effects = effects[:-100]
+    val_features = features[-n_val:]
+    val_effects = effects[-n_val:]
+    features = features[:-n_val]
+    effects = effects[:-n_val]
 
     dataset = TensorDataset(features, effects)
     val_dataset = TensorDataset(val_features, val_effects)

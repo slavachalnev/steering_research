@@ -148,6 +148,8 @@ def main(features, save_dir):
     print('done save')
 
 if __name__ == "__main__":
+    torch.set_grad_enabled(False)
+
     # # 16k
     # path_to_params = hf_hub_download(
     # repo_id="google/gemma-scope-2b-pt-res",
@@ -166,19 +168,50 @@ if __name__ == "__main__":
     ###################################3
 
 
-    # 32k
-    # layer_12/width_32k/average_l0_76
+    # # 32k
+    # # layer_12/width_32k/average_l0_76
+    # path_to_params = hf_hub_download(
+    # repo_id="google/gemma-scope-2b-pt-res",
+    # filename="layer_12/width_32k/average_l0_76/params.npz",
+    # force_download=False)
+    # params = np.load(path_to_params)
+    # pt_params = {k: torch.from_numpy(v) for k, v in params.items()}
+    # sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
+    # sae.load_state_dict(pt_params)
+    # sae._requires_grad = False
+
+    # save_dir = "effects/G2_2B_L12/multi_32k_from_0"
+    # os.makedirs(save_dir)
+    # main(sae.W_dec, save_dir)
+
+
+    ###################################
+
+    # sample and combine
+    # 16k
     path_to_params = hf_hub_download(
     repo_id="google/gemma-scope-2b-pt-res",
-    filename="layer_12/width_32k/average_l0_76/params.npz",
+    filename="layer_12/width_16k/average_l0_82/params.npz",
     force_download=False)
     params = np.load(path_to_params)
     pt_params = {k: torch.from_numpy(v) for k, v in params.items()}
     sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
     sae.load_state_dict(pt_params)
     sae._requires_grad = False
+    initial_features = sae.W_dec # shape d_model x d_sae
 
-    save_dir = "effects/G2_2B_L12/multi_32k_from_0"
+    save_dir = "effects/G2_2B_L12/sample_and_combine_16k"
     os.makedirs(save_dir)
-    main(sae.W_dec, save_dir)
+    n_samples = 32768
+    steering_vectors = []
+    for i in range(n_samples):
+        sampled_idxs = torch.randint(0, initial_features.shape[0], (2,))
+        scales = torch.rand(2)
+        vec_to_add = (initial_features[sampled_idxs[0]] * scales[0] +
+                      initial_features[sampled_idxs[1]] * scales[1])
+        # normalize
+        vec_to_add = vec_to_add / vec_to_add.norm()
+        steering_vectors.append(vec_to_add)
+    steering_vectors = torch.stack(steering_vectors)
 
+    main(steering_vectors, save_dir)
