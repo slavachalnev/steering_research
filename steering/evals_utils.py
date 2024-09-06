@@ -44,6 +44,15 @@ Evaluate the text based on the criterion. Output format should be JSON with the 
         print(f"Error in evaluate_completion: {e}")
         return {"score": 0, "error": str(e)}
 
+async def evaluate_with_timeout(completion, criterion, prompt, client, model, verbose, timeout):
+    try:
+        return await asyncio.wait_for(
+            evaluate_completion(completion, criterion, prompt, client, model, verbose),
+            timeout=timeout
+        )
+    except asyncio.TimeoutError:
+        return {"score": 0, "error": "Timeout"}
+
 def evaluate_completions(
         completions: list[str],
         criterion: str,
@@ -69,6 +78,7 @@ def multi_criterion_evaluation(
         verbose=False,
         filter_errors=True,
         batch_size=1000,
+        timeout=10,
         ):
     repeated_completions = completions * len(criterions)
     repeated_criteria = []
@@ -77,7 +87,7 @@ def multi_criterion_evaluation(
     
     async def evaluate_all():
         tasks = [
-            evaluate_completion(completion, criterion, prompt, client, model, verbose=verbose)
+            evaluate_with_timeout(completion, criterion, prompt, client, model, verbose, timeout)
             for completion, criterion in zip(repeated_completions, repeated_criteria)
         ]
         # chunk tasks into batches
