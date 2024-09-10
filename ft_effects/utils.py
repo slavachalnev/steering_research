@@ -5,7 +5,13 @@ from steering.patch import patch_resid
 from steering.sae import JumpReLUSAE
 from huggingface_hub import hf_hub_download
 
+from baselines.analysis import steer_model
+from steering.evals_utils import multi_criterion_evaluation
+
 import numpy as np
+
+import json
+import plotly.graph_objects as go
 
 import torch
 from tqdm import tqdm
@@ -123,3 +129,51 @@ def get_sae():
     sae.load_state_dict(pt_params)
     sae.cpu()
     return sae
+
+
+@torch.no_grad()
+def compute_scores(steer, model, name, criterion, make_plot=True, scales=None):
+    if scales is None:
+        scales = list(range(0, 210, 10))
+    scores = []
+    coherences = []
+    all_texts = dict()
+    products = []
+    for scale in tqdm(scales):
+        gen_texts = steer_model(model, steer.to(model.W_E.device), 12, "I think", scale)
+        all_texts[scale] = gen_texts
+        score, coherence = multi_criterion_evaluation(
+            gen_texts,
+            [
+                criterion,
+                "Text is coherent and the grammar is correct."
+            ],
+            prompt="I think",
+        )
+        score = [item['score'] for item in score]
+        score = [(item - 1) / 9 for item in score]
+        avg_score = sum(score)/len(score)
+        coherence = [item['score'] for item in coherence]
+        coherence = [(item - 1) / 9 for item in coherence]
+        avg_coherence = sum(coherence)/len(coherence)
+        scores.append(avg_score)
+        coherences.append(avg_coherence)
+        products.append(avg_score * avg_coherence)
+    fig = go.Figure()
+    fig.update_layout(
+        title=f"Steering Analysis for {name}",
+        xaxis_title='Scale',
+        yaxis_title='Value',
+        yaxis=dict(range=[0, 1])  # Set y-axis range from 0 to 1
+    )
+    fig.add_trace(go.Scatter(x=scales, y=coherences, mode='lines', name='Coherence'))
+    fig.add_trace(go.Scatter(x=scales, y=scores, mode='lines', name='Score'))
+    fig.add_trace(go.Scatter(x=scales, y=products, mode='lines', name='Coherence * Score'))
+    if make_plot:
+        fig.show()
+        fig.write_image(f"analysis_out/{name}_steer_analysis.png")
+    # save all_texts as json
+    if make_plot:
+        with open(f"analysis_out/{name}_all_texts.json", "w") as f:
+            json.dump(all_texts, f)
+    return scores, coherences, products

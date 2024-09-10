@@ -24,8 +24,7 @@ from huggingface_hub import hf_hub_download
 from steering.sae import JumpReLUSAE
 from steering.patch import patch_resid
 
-from baselines.analysis import steer_model
-from steering.evals_utils import multi_criterion_evaluation
+from ft_effects.utils import compute_scores
 # %%
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -91,7 +90,7 @@ class ActBuffer:
 # %%
 
 def optimise_wrt_enc(ft_id, target, sae, buffer, n_iters):
-    scale = 50
+    scale = 100
     target = target.to(device)
     steer = sae.W_dec[ft_id].clone()
     steer = steer / torch.norm(steer)
@@ -126,17 +125,17 @@ def optimise_wrt_enc(ft_id, target, sae, buffer, n_iters):
 
 # %%
 target = torch.zeros(sae.W_enc.shape[1])
-target_value = 50
+target_value = 100
 
-# ft_name = "london"
-# ft_id = 14455 # london
-# target[ft_id] = target_value # london
-# criterion = "Text mentions London or anything related to London."
+ft_name = "london"
+ft_id = 14455 # london
+target[ft_id] = target_value # london
+criterion = "Text mentions London or anything related to London."
 
-ft_name = "wedding"
-ft_id = 4230 # wedding
-target[ft_id] = target_value # wedding
-criterion = "Text mentions weddings or anything related to weddings."
+# ft_name = "wedding"
+# ft_id = 4230 # wedding
+# target[ft_id] = target_value # wedding
+# criterion = "Text mentions weddings or anything related to weddings."
 
 
 # %%
@@ -161,59 +160,43 @@ sim = (optim_steer @ sae.W_dec[ft_id]) / (torch.norm(optim_steer) * torch.norm(s
 print(sim)
 print(torch.norm(optim_steer))
 
-# %%
-@torch.no_grad()
-def compute_scores(steer, name, criterion, make_plot=True, scales=None):
-    if scales is None:
-        scales = list(range(0, 210, 10))
-    scores = []
-    coherences = []
-    all_texts = dict()
-    products = []
-    for scale in tqdm(scales):
-        gen_texts = steer_model(model, steer.to(device), 12, "I think", scale)
-        all_texts[scale] = gen_texts
-        score, coherence = multi_criterion_evaluation(
-            gen_texts,
-            [
-                criterion,
-                "Text is coherent and the grammar is correct."
-            ],
-            prompt="I think",
-        )
-        score = [item['score'] for item in score]
-        score = [(item - 1) / 9 for item in score]
-        avg_score = sum(score)/len(score)
-        coherence = [item['score'] for item in coherence]
-        coherence = [(item - 1) / 9 for item in coherence]
-        avg_coherence = sum(coherence)/len(coherence)
-        scores.append(avg_score)
-        coherences.append(avg_coherence)
-        products.append(avg_score * avg_coherence)
-    fig = go.Figure()
-    fig.update_layout(
-        title=f"Steering Analysis for {name}",
-        xaxis_title='Scale',
-        yaxis_title='Value',
-        yaxis=dict(range=[0, 1])  # Set y-axis range from 0 to 1
-    )
-    fig.add_trace(go.Scatter(x=scales, y=coherences, mode='lines', name='Coherence'))
-    fig.add_trace(go.Scatter(x=scales, y=scores, mode='lines', name='Score'))
-    fig.add_trace(go.Scatter(x=scales, y=products, mode='lines', name='Coherence * Score'))
-    if make_plot:
-        fig.show()
-        fig.write_image(f"analysis_out/{name}_steer_analysis.png")
-    # save all_texts as json
-    if make_plot:
-        with open(f"analysis_out/{name}_all_texts.json", "w") as f:
-            json.dump(all_texts, f)
-    return scores, coherences, products
 
 # %%
 if __name__ == "__main__":
-    _ = compute_scores(optim_steer, f"{ft_name}_optimised", criterion, scales=list(range(0, 220, 20)))
+    _ = compute_scores(optim_steer, model, f"{ft_name}_optimised", criterion, scales=list(range(0, 220, 20)))
 
 # %%
 if __name__ == "__main__":
-    _ = compute_scores(sae.W_dec[ft_id], f"{ft_name}_decoder", criterion, scales=list(range(0, 220, 20)))
+    _ = compute_scores(sae.W_dec[ft_id], model, f"{ft_name}_decoder", criterion, scales=list(range(0, 220, 20)))
+# %%
+if __name__ == "__main__":
+    _ = compute_scores(sae.W_enc[:, ft_id], model, f"{ft_name}_encoder", criterion, scales=list(range(0, 220, 20)))
+
+
+# %%
+
+if __name__ == "__main__":
+    # load R_dec from ft_effects/adapter_analysis.py
+    R_dec = torch.load("R_dec.pt").to(device)
+    transformed_steer = R_dec.T @ sae.W_dec[ft_id]
+    transformed_steer = transformed_steer / torch.norm(transformed_steer)
+    # _ = compute_scores(transformed_steer, f"{ft_name}_rotated_decoder", criterion, scales=list(range(0, 220, 20)))
+
+# %%
+if __name__ == "__main__":
+    from ft_effects.train import LinearAdapter
+    # with adapter bias
+    adapter = LinearAdapter(sae.W_enc.shape[0], sae.W_enc.shape[1])
+    adapter.load_state_dict(torch.load("linear_adapter.pt"))
+    adapter.to(device)
+    b = adapter.W @ adapter.b
+    b = b / torch.norm(b)
+    print(b.shape)
+    transformed_steer = R_dec.T @ sae.W_dec[ft_id]
+    transformed_steer = transformed_steer / torch.norm(transformed_steer)
+    transformed_steer = transformed_steer - 1.5 * b
+    transformed_steer = transformed_steer / torch.norm(transformed_steer)
+    _ = compute_scores(transformed_steer, model, f"{ft_name}_rotated_decoder_with_bias", criterion, scales=list(range(0, 220, 20)))
+
+# %%
 # %%
