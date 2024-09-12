@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import FeatureCard from "./FeatureCard";
-import data from "./base_vancouver_small.json";
+import data from "./base_bret_activations.json";
+import { getBaseUrl } from "./utils";
 
 interface FeatureData {
 	binMax: number;
@@ -17,21 +18,21 @@ interface ProcessedFeaturesType {
 	feature_results: FeatureData[];
 }
 
-const getBaseUrl = () => {
-	return process.env.NODE_ENV === "development"
-		? "http://localhost:5000"
-		: "https://steering-explorer-server.vercel.app";
-};
-
-const FeatureColumn = () => {
+const FeatureColumn = ({
+	processedFeatures,
+	setProcessedFeatures,
+}: {
+	processedFeatures: ProcessedFeaturesType[];
+	setProcessedFeatures: (features: ProcessedFeaturesType[]) => void;
+}) => {
 	const [newFeature, setNewFeature] = useState<string>("");
 	const [isInputVisible, setIsInputVisible] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
 	// const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
 
-	const [processedFeatures, setProcessedFeatures] = useState<
-		ProcessedFeaturesType[]
-	>([]);
+	// const [processedFeatures, setProcessedFeatures] = useState<
+	// 	ProcessedFeaturesType[]
+	// >([]);
 
 	// const debouncedSearch = debounce(async (query: string) => {
 	// 	if (query.trim() === "") {
@@ -104,7 +105,7 @@ const FeatureColumn = () => {
 		// const url = `${getBaseUrl()}/get_feature?features=${features
 		// 	.map((feature) => feature.featureNumber)
 		// 	.join(",")}`;
-		// const url = `${getBaseUrl()}/get_feature?features=7850, 7914, 7854, 3288, 16339, 4291, 13105, 829, 1633, 15297, 1301, 12262, 628, 8408, 1058, 13741, 1338, 13425, 3029, 11097, 15710, 5315, 8205, 11675, 3118, 5365, 13806, 4037, 9566, 3969, 292, 7315, 15702, 15370, 6464, 1551, 8346, 16215, 7405, 12410`;
+		// const url = `${getBaseUrl()}/get_feature?features=7914, 7850, 15370, 5365, 1990, 16339, 12634, 3288, 9758, 7854, 4291, 1633, 13425, 15710, 3118, 628, 8570, 8318, 5315, 3969`;
 		// const response = await fetch(url, {
 		// 	method: "GET",
 		// 	headers: {
@@ -113,7 +114,6 @@ const FeatureColumn = () => {
 		// });
 		// const data = await response.json();
 
-		console.log(data);
 		const dataWithId: ProcessedFeaturesType[] = data.map((d: any) => {
 			return Object.assign(d, {
 				id: crypto.randomUUID(),
@@ -132,7 +132,7 @@ const FeatureColumn = () => {
 				style={{
 					display: "flex",
 					flexDirection: "column",
-					alignItems: "center",
+					// alignItems: "center",
 					transition: "width 0.3s",
 					height: "calc(100vh - 2px)",
 					overflowY: "auto",
@@ -140,7 +140,8 @@ const FeatureColumn = () => {
 			>
 				<div
 					style={{
-						marginRight: "auto",
+						// margin: "auto",
+						// marginRight: "auto",
 						marginLeft: "15px",
 					}}
 				>
