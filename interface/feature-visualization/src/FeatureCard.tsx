@@ -259,7 +259,6 @@ function FeatureCard({
 					style={{
 						fontSize: ".75rem",
 						marginLeft: "5px",
-						// marginRight: columnSide === "left" ? "45px" : "33px",
 						marginRight: "45px",
 						padding: "1px",
 						fontWeight: "bold",
