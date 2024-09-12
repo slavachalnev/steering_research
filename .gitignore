@@ -176,3 +176,9 @@ wandb/
 *.png
 
 ft_effects/effects/
+
+node_modules/
+node_modules/*
+*/node_modules/*
+package-lock.json
+package.json

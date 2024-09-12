@@ -9,8 +9,16 @@ const getBaseUrl = () => {
 		: "https://steering-explorer-server.vercel.app";
 };
 
-const TokenDisplay = ({ token, value }: { token: string; value: number }) => {
-	const opacity = Math.min(0.6, value / 60);
+const TokenDisplay = ({
+	token,
+	value,
+	maxValue,
+}: {
+	token: string;
+	value: number;
+	maxValue: number;
+}) => {
+	const opacity = Math.min(0.85, value / maxValue);
 	const [isHovering, setIsHovering] = useState(false);
 	const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
 	const spanRef = useRef<HTMLSpanElement>(null);
@@ -65,7 +73,7 @@ const TokenDisplay = ({ token, value }: { token: string; value: number }) => {
 			)}
 			<span
 				style={{
-					backgroundColor: `rgba(0, 0, 255, ${opacity})`,
+					backgroundColor: `rgba(42, 97, 211, ${opacity})`,
 					display: "inline-block",
 					borderRadius: "4px",
 					color: "black",
@@ -108,6 +116,7 @@ const ActivationItem = ({ activation }: { activation: any }) => {
 						key={i + startIndex}
 						token={token}
 						value={activation.values[i + startIndex]}
+						maxValue={Math.max(...activation.values)}
 					/>
 				))}
 			</div>
@@ -121,6 +130,7 @@ const FeatureCardCommands = ({
 	inspectedFeature,
 	onDelete,
 	feature,
+	featureId,
 	peek,
 	hide,
 }: {
@@ -128,7 +138,8 @@ const FeatureCardCommands = ({
 	inspectFeature: (feature: FeatureItem) => void;
 	inspectedFeature: FeatureItem | null;
 	onDelete: (id: string) => void;
-	feature: FeatureItem;
+	feature: number;
+	featureId: string;
 	peek: () => void;
 	hide: () => void;
 }) => {
@@ -187,16 +198,17 @@ const FeatureCardCommands = ({
 							right: "33px",
 							cursor: "pointer",
 							fontSize: "16px",
-							color: inspectedFeature?.id === feature.id ? "black" : "gray",
+							// color: inspectedFeature?.id === feature.id ? "black" : "gray",
 							transition: "color 0.1s ease-in-out",
 						}}
-						onClick={() => {
-							inspectFeature(feature);
-						}}
+						// onClick={() => {
+						// 	inspectFeature(feature);
+						// }}
 						onMouseEnter={(e) => (e.currentTarget.style.color = "black")}
 						onMouseLeave={(e) => {
-							e.currentTarget.style.color =
-								inspectedFeature?.id === feature.id ? "black" : "gray";
+							e.currentTarget.style.color = "gray";
+							// e.currentTarget.style.color =
+							// 	inspectedFeature?.id === feature.id ? "black" : "gray";
 						}}
 					>
 						<svg
@@ -232,7 +244,7 @@ const FeatureCardCommands = ({
 							color: "gray",
 							transition: "color 0.1s ease-in-out",
 						}}
-						onClick={() => onDelete(feature.id)}
+						onClick={() => onDelete(featureId)}
 						onMouseEnter={(e) => (e.currentTarget.style.color = "black")}
 						onMouseLeave={(e) => (e.currentTarget.style.color = "gray")}
 					>
@@ -266,7 +278,7 @@ const FeatureCardCommands = ({
 							color: "gray",
 							transition: "color 0.1s ease-in-out",
 						}}
-						onClick={() => onDelete(feature.id)}
+						onClick={() => onDelete(featureId)}
 						onMouseEnter={(e) => (e.currentTarget.style.color = "black")}
 						onMouseLeave={(e) => (e.currentTarget.style.color = "gray")}
 					>
@@ -294,18 +306,22 @@ const FeatureCardCommands = ({
 
 function FeatureCard({
 	feature,
+	featureId,
 	onDelete,
 	inspectFeature,
 	inspectedFeature,
 	columnSide,
+	activations = [],
 }: {
-	feature: FeatureItem;
+	feature: number;
+	featureId: string;
 	onDelete: (id: string) => void;
 	inspectFeature: (feature: FeatureItem) => void;
 	inspectedFeature: FeatureItem | null;
 	columnSide: "left" | "right";
+	activations: any;
 }) {
-	const [activations, setActivations] = useState([]);
+	// const [activations, setActivations] = useState([]);
 	const [description, setDescription] = useState("");
 	const [expanded, setExpanded] = useState(false);
 	const [contentHeight, setContentHeight] = useState("auto");
@@ -314,37 +330,52 @@ function FeatureCard({
 
 	const [loading, setLoading] = useState(true);
 
-	const fetchFeatureData = async () => {
-		try {
-			const response = await fetch(
-				`${getBaseUrl()}/api/feature/${feature.featureNumber}`,
-				{
-					method: "GET",
-					headers: {
-						"Content-Type": "application/json",
-					},
-				}
-			);
-			const data = await response.json();
-			// Filter out duplicate activations
-			const uniqueActivations = data.activations.filter(
-				(activation: any, index: number, self: any) =>
-					index ===
-					self.findIndex(
-						(t: any) => t.tokens.join("") === activation.tokens.join("")
-					)
-			);
-			setLoading(false);
-			setActivations(uniqueActivations);
-			setDescription(data.explanations[0].description);
-		} catch (error) {
-			console.error("Error fetching feature data:", error);
-		}
-	};
+	// useEffect(() => {
+	// 	fetch(
+	// 		`https://siunami--steering-webapp-analyze-activations-dev.modal.run?feature=${4000}`
+	// 	).then((data) => {
+	// 		console.log(data);
+	// 	});
+	// }, []);
+
+	// const fetchFeatureData = async () => {
+	// 	try {
+	// 		const response = await fetch(
+	// 			// `${getBaseUrl()}/api/feature/${feature.featureNumber}`,
+	// 			`${getBaseUrl()}/get_feature?feature=${feature}`,
+	// 			{
+	// 				method: "GET",
+	// 				headers: {
+	// 					"Content-Type": "application/json",
+	// 				},
+	// 			}
+	// 		);
+	// 		const data = await response.json();
+	// 		console.log(data);
+	// 		// Filter out duplicate activations
+	// 		const uniqueActivations = data.activations.filter(
+	// 			(activation: any, index: number, self: any) =>
+	// 				index ===
+	// 				self.findIndex(
+	// 					(t: any) => t.tokens.join("") === activation.tokens.join("")
+	// 				)
+	// 		);
+	// 		setLoading(false);
+	// 		setActivations(uniqueActivations);
+	// 		// setDescription(data.explanations[0].description);
+	// 		setDescription("");
+	// 	} catch (error) {
+	// 		console.error("Error fetching feature data:", error);
+	// 	}
+	// };
+
+	// useEffect(() => {
+	// 	fetchFeatureData();
+	// }, [feature]);
 
 	useEffect(() => {
-		fetchFeatureData();
-	}, [feature]);
+		setLoading(false);
+	}, [activations]);
 
 	useEffect(() => {
 		if (contentRef.current) {
@@ -374,17 +405,19 @@ function FeatureCard({
 	return (
 		<div
 			style={{
-				backgroundColor:
-					inspectedFeature?.id === feature.id
-						? "rgba(255,255,255, 1)"
-						: "rgba(255,255,255, 0.8)",
-				border:
-					inspectedFeature?.id === feature.id
-						? "6px solid rgba(0, 0, 255, 0.65)"
-						: "6px solid rgba(0, 0, 0, 0)",
+				// backgroundColor:
+				// 	inspectedFeature?.id === feature.id
+				// 		? "rgba(250, 250, 248, 1)"
+				// 		: "rgba(250, 250, 248, 1)",
+				// border:
+				// 	inspectedFeature?.id === feature.id
+				// 		? "6px solid rgba(0, 0, 255, 0.65)"
+				// 		: "6px solid rgba(0, 0, 0, 0)",
+				backgroundColor: "rgba(250, 250, 248, 1)",
+				border: "6px solid rgba(0, 0, 0, 0)",
 				padding: "8px",
 				paddingBottom: "4px",
-				borderRadius: "4px",
+				borderRadius: "15px",
 				margin: "0 12px",
 				// minWidth: "400px",
 				textAlign: "center",
@@ -406,13 +439,14 @@ function FeatureCard({
 					inspectedFeature={inspectedFeature}
 					onDelete={onDelete}
 					feature={feature}
+					featureId={featureId}
 					peek={peek}
 					hide={hide}
 				/>
 				<div
 					style={{
 						borderRadius: "5px",
-						backgroundColor: "rgba(0, 0, 255, 0.65)",
+						backgroundColor: "rgba(42, 97, 211, .7)",
 						padding: "1px",
 						fontSize: ".75rem",
 						width: "fit-content",
@@ -421,7 +455,7 @@ function FeatureCard({
 						color: "white",
 					}}
 				>
-					Feature {feature.featureNumber}
+					Feature {feature}
 				</div>
 				<div
 					style={{
