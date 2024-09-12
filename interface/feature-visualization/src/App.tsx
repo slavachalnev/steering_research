@@ -32,16 +32,7 @@ export default function App() {
 				width: "100vw",
 			}}
 		>
-			{(inspectedFeature ? ["left", "right"] : ["left"]).map(
-				(columnSide: string) => (
-					<FeatureColumn
-						key={columnSide}
-						inspectFeature={inspectFeature}
-						inspectedFeature={inspectedFeature}
-						columnSide={columnSide as "left" | "right"}
-					/>
-				)
-			)}
+			<FeatureColumn />
 		</div>
 	);
 }
