@@ -147,11 +147,6 @@ export default function App() {
 		setMaxActivations(result);
 	}, [processedFeatures]);
 
-	useEffect(() => {
-		console.log(activations);
-		console.log(processedFeatures);
-	}, []);
-
 	const containerWidth = "675px";
 	const borderRadius = "4px";
 	const fontSize = "16px";
