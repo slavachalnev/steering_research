@@ -83,14 +83,13 @@ def steer_model(model, steer, hp, text, scale=5, batch_size=64, n_samples=128):
             all_gen.extend(model.to_string(gen_toks))
     return all_gen
 
-def plot(path, coherence, score, scales, method, steering_goal_name):
-    product = [c * s for c, s in zip(coherence, score)]
+def plot(path, coherence, score, product, scales, method, steering_goal_name):
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=scales, y=coherence, mode='lines', name='Coherence'))
     fig.add_trace(go.Scatter(x=scales, y=score, mode='lines', name='Score'))
     fig.add_trace(go.Scatter(x=scales, y=product, mode='lines', name='Coherence * Score'))
     fig.update_layout(
-        title=f'Steering scores for {steering_goal_name} ({method})',
+        title=f'Steering Analysis for {steering_goal_name} ({method})',
         xaxis_title='Scale',
         yaxis_title='Value',
         legend_title='Metric',
@@ -131,10 +130,29 @@ def analyse_steer(model, steer, hp, path, method='activation_steering'):
         avg_score.append(sum(score) / len(score))
         avg_coh.append(sum(coherence) / len(coherence))
 
+    # Compute the product at each scale
+    product = [c * s for c, s in zip(avg_coh, avg_score)]
+
+    # Find the maximum product and the corresponding scale
+    max_product = max(product)
+    max_index = product.index(max_product)
+    max_scale = scales[max_index]
+
+    # Log or store these results
+    result = {
+        'path': path,
+        'method': method,
+        'steering_goal_name': steering_goal_name,
+        'max_product': max_product,
+        'scale_at_max': max_scale
+    }
+
     with open(os.path.join(path, f"generated_texts_{method}.json"), 'w') as f:
         json.dump(all_texts, f, indent=2)
 
-    plot(path, avg_coh, avg_score, scales, method, steering_goal_name)
+    plot(path, avg_coh, avg_score, product, scales, method, steering_goal_name)
+
+    return result
 
 # %%
 if __name__ == "__main__":
@@ -150,6 +168,8 @@ if __name__ == "__main__":
         "steer_cfgs/gemma2/wedding",
     ]
 
+    results = []
+
     for path in paths:
         # Activation Steering
         print("Activation Steering")
@@ -157,12 +177,18 @@ if __name__ == "__main__":
         steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
         steer = steer / torch.norm(steer, dim=-1, keepdim=True)
         hp = f"blocks.{layer}.hook_resid_post"
-        analyse_steer(model, steer, hp, path, method='ActSteer')
+        result = analyse_steer(model, steer, hp, path, method='ActSteer')
+        results.append(result)
 
         # SAE Steering
         print("SAE Steering")
         steer, hp, layer = load_sae_steer(path)
         steer = steer.to(device)
-        analyse_steer(model, steer, hp, path, method='SAE')
+        result = analyse_steer(model, steer, hp, path, method='SAE')
+        results.append(result)
+
+    # Write the results to a JSON file
+    with open('steering_results.json', 'w') as f:
+        json.dump(results, f, indent=2)
 
 # %%
