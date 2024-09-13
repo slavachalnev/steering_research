@@ -1,25 +1,45 @@
-import { useState, useEffect, useRef } from "react";
+// import { useState, useEffect, useRef } from "react";
 import "./App.css";
 
+import { useState, useEffect, useRef, useMemo } from "react";
+
 export const TokenDisplay = ({
+	index,
 	token,
 	value,
 	maxValue,
 	color = "black",
+	backgroundColor = "42, 97, 211",
+	inspectToken = (id: number) => {},
 }: {
+	index: number;
 	token: string;
 	value: number;
 	maxValue: number;
 	color?: string;
+	backgroundColor?: string;
+	inspectToken?: (id: number) => void;
 }) => {
-	const opacity = Math.min(0.85, value / maxValue);
 	const [isHovering, setIsHovering] = useState(false);
 	const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
 	const spanRef = useRef<HTMLSpanElement>(null);
 
-	const displayToken =
-		token.startsWith("▁") || token.startsWith(" ") ? token.slice(1) : token;
-	const addSpace = token.includes("▁") || token.startsWith(" ") ? " " : "";
+	// Use useMemo to recalculate opacity when value or maxValue changes
+	const opacity = useMemo(() => {
+		if (value == 0 && maxValue == 0) return 0;
+		return Math.min(0.85, value / maxValue);
+	}, [value, maxValue]);
+
+	const displayToken = useMemo(
+		() =>
+			token.startsWith("▁") || token.startsWith(" ") ? token.slice(1) : token,
+		[token]
+	);
+
+	const addSpace = useMemo(
+		() => (token.includes("▁") || token.startsWith(" ") ? " " : ""),
+		[token]
+	);
 
 	const updateTooltipPosition = () => {
 		if (spanRef.current) {
@@ -30,6 +50,13 @@ export const TokenDisplay = ({
 			});
 		}
 	};
+
+	// Update tooltip position when value changes
+	useEffect(() => {
+		if (isHovering) {
+			updateTooltipPosition();
+		}
+	}, [value, isHovering]);
 
 	return (
 		<span
@@ -44,7 +71,11 @@ export const TokenDisplay = ({
 				updateTooltipPosition();
 			}}
 			onMouseLeave={() => setIsHovering(false)}
+			onClick={() => {
+				inspectToken(index);
+			}}
 		>
+			{" "}
 			{isHovering && (
 				<div
 					style={{
@@ -67,7 +98,7 @@ export const TokenDisplay = ({
 			)}
 			<span
 				style={{
-					backgroundColor: `rgba(42, 97, 211, ${opacity})`,
+					backgroundColor: `rgba(${backgroundColor}, ${opacity})`,
 					display: "inline-block",
 					borderRadius: "4px",
 					fontSize: color == "white" ? "18px" : "12px",
@@ -114,6 +145,7 @@ const ActivationItem = ({
 				{activation.tokens.slice(startIndex).map((token: string, i: number) => (
 					<TokenDisplay
 						key={i + startIndex}
+						index={i + startIndex}
 						token={token}
 						value={activation.values[i + startIndex]}
 						maxValue={maxAct}

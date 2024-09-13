@@ -6,6 +6,7 @@ import { TokenDisplay } from "./FeatureCard";
 import { getBaseUrl } from "./utils";
 import bret_tokens from "./base_bret_tokens_small.json";
 import bret_activations from "./base_bret_activations_small.json";
+import bret_max_activations from "./base_bret_max_activations.json";
 
 interface FeatureData {
 	binMax: number;
@@ -22,17 +23,14 @@ interface ProcessedFeaturesType {
 	feature_results: FeatureData[];
 }
 
-interface Features {
-	difference: number;
-	index: number;
-}
-
 export default function App() {
 	const [text, setText] = useState("");
 	const [passage, setPassage] = useState(
 		"The greatest leaps in the progress of civilization have come from new forms for seeing and discussing ideas, such as written language, printed books, and mathematical notation. Each of these mediums enabled humanity to think and communicate in ways that were previously inconceivable."
 	);
-	const [features, setFeatures] = useState<Features[]>(bret_tokens.results);
+	const [features, setFeatures] = useState<number[]>(
+		bret_tokens.results.map((data) => data.index)
+	);
 	const [processedFeatures, setProcessedFeatures] =
 		useState<ProcessedFeaturesType[]>(bret_activations);
 
@@ -45,6 +43,12 @@ export default function App() {
 	const [maxActivations, setMaxActivations] = useState<Record<string, number>>(
 		{}
 	);
+
+	// Max activating
+	const [focusToken, setFocusToken] = useState<number>(-1);
+	const [processedTokenFeatures, setProcessedTokenFeatures] = useState<
+		ProcessedFeaturesType[]
+	>([]);
 
 	const processText = async () => {
 		setPassage(text);
@@ -77,13 +81,11 @@ export default function App() {
 		}
 	};
 
-	const get_activations = async () => {
+	const get_activations = async (features: number[]) => {
 		console.log(features);
 		setProcessingState("Getting feature visualizations");
 
-		const url = `${getBaseUrl()}/get_feature?features=${features
-			.map((d) => d.index)
-			.join(",")}`;
+		const url = `${getBaseUrl()}/get_feature?features=${features.join(",")}`;
 		const response = await fetch(url, {
 			method: "GET",
 			headers: {
@@ -96,7 +98,9 @@ export default function App() {
 				id: crypto.randomUUID(),
 			});
 		});
+		setProcessingState("");
 
+		return dataWithId;
 		console.log(dataWithId);
 		setProcessingState("");
 		setProcessedFeatures([...dataWithId]);
@@ -131,8 +135,36 @@ export default function App() {
 		}
 	};
 
+	const inspectToken = async (index: number) => {
+		if (focusToken == index) {
+			setFocusToken(-1);
+			setProcessedTokenFeatures([]);
+		} else {
+			setFocusToken(index);
+			setMagnified(-1);
+			let tokenFeatures = bret_max_activations
+				.slice(1)
+				[index].top_activations.map((activation) => activation.index);
+
+			const data = await get_activations(tokenFeatures);
+			setProcessedTokenFeatures(data);
+		}
+	};
+
+	const [isInitialMount, setIsInitialMount] = useState(true);
+
+	const handleGetActivations = async () => {
+		const data = await get_activations(features);
+		setProcessedFeatures([...data]);
+		setText("");
+	};
+
 	useEffect(() => {
-		if (features.length > 0 && text != "") get_activations();
+		if (isInitialMount) {
+			setIsInitialMount(false);
+		} else if (features.length > 0) {
+			handleGetActivations();
+		}
 	}, [features]);
 
 	useEffect(() => {
@@ -214,43 +246,38 @@ export default function App() {
 			>
 				<div style={{ display: "inline-block" }}>
 					{tokens.slice(1).map((token: string, i: number) => {
-						if (magnified != -1) {
-							const magnifiedIndex = processedFeatures.findIndex(
-								(feature) => feature.feature == magnified
-							);
-							console.log(processedFeatures);
-							console.log(magnified);
-
-							const maxValue =
-								maxActivations[processedFeatures[magnifiedIndex]["feature"]];
-							const value = activations[i + 1][magnifiedIndex];
-
-							return (
-								<TokenDisplay
-									key={i}
-									token={token}
-									value={value}
-									maxValue={maxValue}
-									color={"white"}
-								/>
-							);
-						}
+						const magnifiedIndex = processedFeatures.findIndex(
+							(feature) => feature.feature === magnified
+						);
+						const value =
+							magnified !== -1 ? activations[i + 1][magnifiedIndex] : 0;
+						const maxValue = magnified !== -1 ? maxActivations[magnified] : 0;
 						return (
 							<TokenDisplay
 								key={i}
+								index={i}
 								token={token}
-								value={0}
-								maxValue={0}
+								value={focusToken != -1 ? (focusToken == i ? 1 : 0) : value}
+								maxValue={focusToken != -1 ? 1 : maxValue}
+								backgroundColor={focusToken != -1 ? "211, 56,43" : undefined}
 								color={"white"}
+								inspectToken={inspectToken}
 							/>
 						);
 					})}
 				</div>
 			</div>
-			{processedFeatures.length > 0 && (
+			{focusToken == -1 && processedFeatures.length > 0 && (
 				<FeatureColumn
 					onMagnify={onMagnify}
 					processedFeatures={processedFeatures}
+					removeFeature={removeFeature}
+				/>
+			)}
+			{processedTokenFeatures.length > 0 && (
+				<FeatureColumn
+					onMagnify={onMagnify}
+					processedFeatures={processedTokenFeatures}
 					removeFeature={removeFeature}
 				/>
 			)}
