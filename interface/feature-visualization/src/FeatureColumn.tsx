@@ -21,9 +21,11 @@ interface ProcessedFeaturesType {
 const FeatureColumn = ({
 	processedFeatures,
 	setProcessedFeatures,
+	onMagnify,
 }: {
 	processedFeatures: ProcessedFeaturesType[];
 	setProcessedFeatures: (features: ProcessedFeaturesType[]) => void;
+	onMagnify: (id: string) => void;
 }) => {
 	const [newFeature, setNewFeature] = useState<string>("");
 	const [isInputVisible, setIsInputVisible] = useState(false);
@@ -122,32 +124,30 @@ const FeatureColumn = ({
 		setProcessedFeatures([...processedFeatures, ...dataWithId]);
 	};
 
-	useEffect(() => {
-		getAllFeatureData();
-	}, []);
+	// useEffect(() => {
+	// 	getAllFeatureData();
+	// }, []);
 
 	return (
-		<div>
+		<div
+			style={{
+				height: "70vh",
+				display: "flex",
+				flexDirection: "column",
+				overflow: "hidden",
+			}}
+		>
 			<div
 				style={{
 					display: "flex",
 					flexDirection: "column",
 					// alignItems: "center",
 					transition: "width 0.3s",
-					height: "calc(100vh - 2px)",
+					// height: "auto",
+					flexGrow: 1,
 					overflowY: "auto",
 				}}
 			>
-				<div
-					style={{
-						// margin: "auto",
-						// marginRight: "auto",
-						marginLeft: "15px",
-					}}
-				>
-					<h2>Collection</h2>
-				</div>
-
 				<div style={{ display: "flex", flexDirection: "column", gap: ".5px" }}>
 					{processedFeatures.map(
 						(feature: ProcessedFeaturesType, i: number) => {
@@ -157,6 +157,7 @@ const FeatureColumn = ({
 										feature={feature.feature}
 										featureId={feature.id}
 										onDelete={removeFeature}
+										onMagnify={onMagnify}
 										activations={feature.feature_results}
 									/>
 									<div style={{ height: "10px", width: "100%" }} />

@@ -1,23 +1,25 @@
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
 
-const TokenDisplay = ({
+export const TokenDisplay = ({
 	token,
 	value,
 	maxValue,
+	color = "black",
 }: {
 	token: string;
 	value: number;
 	maxValue: number;
+	color?: string;
 }) => {
 	const opacity = Math.min(0.85, value / maxValue);
 	const [isHovering, setIsHovering] = useState(false);
 	const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
 	const spanRef = useRef<HTMLSpanElement>(null);
 
-	// Remove "▁" if it's the first character, otherwise keep the token as is
-	const displayToken = token.startsWith("▁") ? token.slice(1) : token;
-	const addSpace = token.includes("▁") ? " " : "";
+	const displayToken =
+		token.startsWith("▁") || token.startsWith(" ") ? token.slice(1) : token;
+	const addSpace = token.includes("▁") || token.startsWith(" ") ? " " : "";
 
 	const updateTooltipPosition = () => {
 		if (spanRef.current) {
@@ -68,7 +70,8 @@ const TokenDisplay = ({
 					backgroundColor: `rgba(42, 97, 211, ${opacity})`,
 					display: "inline-block",
 					borderRadius: "4px",
-					color: "black",
+					fontSize: color == "white" ? "18px" : "12px",
+					color,
 				}}
 			>
 				{addSpace}
@@ -117,9 +120,11 @@ const ActivationItem = ({ activation }: { activation: any }) => {
 
 const FeatureCardCommands = ({
 	onDelete,
+	onMagnify,
 	featureId,
 }: {
 	onDelete: (id: string) => void;
+	onMagnify: (id: string) => void;
 	featureId: string;
 }) => {
 	return (
@@ -128,30 +133,77 @@ const FeatureCardCommands = ({
 				position: "absolute",
 				top: "7px",
 				right: "10px",
-				cursor: "pointer",
-				fontSize: "16px",
-				color: "gray",
-				transition: "color 0.1s ease-in-out",
+				display: "flex",
+				gap: "8px",
 			}}
-			onClick={() => onDelete(featureId)}
-			onMouseEnter={(e) => (e.currentTarget.style.color = "black")}
-			onMouseLeave={(e) => (e.currentTarget.style.color = "gray")}
 		>
-			<svg
-				width="16"
-				height="16"
-				viewBox="0 0 16 16"
-				fill="none"
-				xmlns="http://www.w3.org/2000/svg"
+			<div
+				style={{
+					cursor: "pointer",
+					fontSize: "16px",
+					color: "gray",
+					transition: "color 0.1s ease-in-out",
+				}}
+				onClick={() => onMagnify(featureId)}
+				onMouseEnter={(e) => {
+					// onMagnify(featureId);
+					e.currentTarget.style.color = "black";
+				}}
+				onMouseLeave={(e) => {
+					// onMagnify("");
+					e.currentTarget.style.color = "gray";
+				}}
 			>
-				<path
-					d="M2 4h12M5.333 4V2.667a1.333 1.333 0 011.334-1.334h2.666a1.333 1.333 0 011.334 1.334V4m2 0v9.333a1.333 1.333 0 01-1.334 1.334H4.667a1.333 1.333 0 01-1.334-1.334V4h9.334z"
-					stroke="currentColor"
-					strokeWidth="1.5"
-					strokeLinecap="round"
-					strokeLinejoin="round"
-				/>
-			</svg>
+				<svg
+					width="16"
+					height="16"
+					viewBox="0 0 16 16"
+					fill="none"
+					xmlns="http://www.w3.org/2000/svg"
+				>
+					<path
+						d="M7 11.5C9.48528 11.5 11.5 9.48528 11.5 7C11.5 4.51472 9.48528 2.5 7 2.5C4.51472 2.5 2.5 4.51472 2.5 7C2.5 9.48528 4.51472 11.5 7 11.5Z"
+						stroke="currentColor"
+						strokeWidth="1.5"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+					/>
+					<path
+						d="M10.5 10.5L13.5 13.5"
+						stroke="currentColor"
+						strokeWidth="1.5"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+					/>
+				</svg>
+			</div>
+			<div
+				style={{
+					cursor: "pointer",
+					fontSize: "16px",
+					color: "gray",
+					transition: "color 0.1s ease-in-out",
+				}}
+				onClick={() => onDelete(featureId)}
+				onMouseEnter={(e) => (e.currentTarget.style.color = "black")}
+				onMouseLeave={(e) => (e.currentTarget.style.color = "gray")}
+			>
+				<svg
+					width="16"
+					height="16"
+					viewBox="0 0 16 16"
+					fill="none"
+					xmlns="http://www.w3.org/2000/svg"
+				>
+					<path
+						d="M2 4h12M5.333 4V2.667a1.333 1.333 0 011.334-1.334h2.666a1.333 1.333 0 011.334 1.334V4m2 0v9.333a1.333 1.333 0 01-1.334 1.334H4.667a1.333 1.333 0 01-1.334-1.334V4h9.334z"
+						stroke="currentColor"
+						strokeWidth="1.5"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+					/>
+				</svg>
+			</div>
 		</div>
 	);
 };
@@ -188,11 +240,13 @@ function FeatureCard({
 	feature,
 	featureId,
 	onDelete,
+	onMagnify,
 	activations = [],
 }: {
 	feature: number;
 	featureId: string;
 	onDelete: (id: string) => void;
+	onMagnify: (id: string) => void;
 	activations: any;
 }) {
 	const [description, setDescription] = useState("");
@@ -240,7 +294,11 @@ function FeatureCard({
 					color: "black",
 				}}
 			>
-				<FeatureCardCommands onDelete={onDelete} featureId={featureId} />
+				<FeatureCardCommands
+					onDelete={onDelete}
+					onMagnify={onMagnify}
+					featureId={featureId}
+				/>
 				<div
 					style={{
 						borderRadius: "5px",

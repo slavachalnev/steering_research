@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import FeatureColumn from "./FeatureColumn";
+import { TokenDisplay } from "./FeatureCard";
+
 import { getBaseUrl } from "./utils";
-import bret_tokens from "./base_bret_tokens.json";
-import bret_activations from "./base_bret_activations.json";
+import bret_tokens from "./base_bret_tokens_small.json";
+import bret_activations from "./base_bret_activations_small.json";
 
 interface FeatureData {
 	binMax: number;
@@ -26,18 +28,19 @@ interface Features {
 }
 
 export default function App() {
-	const [text, setText] = useState(
+	const [text, setText] = useState("");
+	const [passage, setPassage] = useState(
 		"The greatest leaps in the progress of civilization have come from new forms for seeing and discussing ideas, such as written language, printed books, and mathematical notation. Each of these mediums enabled humanity to think and communicate in ways that were previously inconceivable."
 	);
-	const [passage, setPassage] = useState("");
 	const [features, setFeatures] = useState<Features[]>(bret_tokens.results);
 	const [processedFeatures, setProcessedFeatures] =
 		useState<ProcessedFeaturesType[]>(bret_activations);
 
-	const [tokens, setTokens] = useState([bret_tokens.tokens]);
-	const [activations, setActivations] = useState([bret_tokens.activations]);
+	const [tokens, setTokens] = useState(bret_tokens.tokens);
+	const [activations, setActivations] = useState(bret_tokens.activations);
 
 	const [processingState, setProcessingState] = useState("");
+	const [magnified, setMagnified] = useState<string>("");
 
 	const processText = async () => {
 		setPassage(text);
@@ -61,7 +64,7 @@ export default function App() {
 	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		// TODO: Implement passage processing logic
-		// processText();
+		processText();
 	};
 
 	const get_activations = async () => {
@@ -89,13 +92,20 @@ export default function App() {
 		setProcessedFeatures([...dataWithId]);
 	};
 
+	const onMagnify = (id: string) => {
+		const index = processedFeatures.findIndex((feature) => feature.id === id);
+		setMagnified(index !== -1 ? index.toString() : "");
+	};
+
 	useEffect(() => {
 		// if (features.length > 0) get_activations();
 	}, [features]);
 
 	useEffect(() => {
-		console.log(bret_tokens);
-		console.log(bret_activations);
+		// processText();
+		// console.log(processedFeatures);
+		// console.log(tokens);
+		// console.log(activations);
 	}, []);
 
 	return (
@@ -124,9 +134,52 @@ export default function App() {
 				<button type="submit">Process Passage</button>
 			</form>
 			<div>{processingState}</div>
-			<p>{passage}</p>
+			<div
+				style={{
+					position: "relative",
+					paddingBottom: "7px",
+					paddingTop: "7px",
+					textAlign: "left",
+					fontSize: ".75rem",
+					borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
+					userSelect: "none",
+					overflow: "hidden",
+					color: "white",
+					// whiteSpace: "nowrap",
+					maxWidth: "675px",
+					marginLeft: "15px",
+				}}
+			>
+				<div style={{ display: "inline-block" }}>
+					{tokens.slice(1).map((token: string, i: number) => {
+						if (magnified != "") {
+							const value = activations[i + 1][parseInt(magnified) as number];
+							const maxValue = Math.max(...activations[i + 1]);
+							return (
+								<TokenDisplay
+									key={i}
+									token={token}
+									value={value}
+									maxValue={maxValue}
+									color={"white"}
+								/>
+							);
+						}
+						return (
+							<TokenDisplay
+								key={i}
+								token={token}
+								value={0}
+								maxValue={0}
+								color={"white"}
+							/>
+						);
+					})}
+				</div>
+			</div>
 			{processedFeatures.length > 0 && (
 				<FeatureColumn
+					onMagnify={onMagnify}
 					processedFeatures={processedFeatures}
 					setProcessedFeatures={setProcessedFeatures}
 				/>
