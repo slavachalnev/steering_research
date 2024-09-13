@@ -5,9 +5,9 @@ from steering.patch import patch_resid
 from steering.sae import JumpReLUSAE
 from huggingface_hub import hf_hub_download
 
-from baselines.analysis import steer_model
 from steering.evals_utils import multi_criterion_evaluation
 
+from torch import nn
 import numpy as np
 
 import json
@@ -16,6 +16,24 @@ import plotly.graph_objects as go
 import torch
 from tqdm import tqdm
 from functools import partial
+
+
+def steer_model(model, steer, hp, text, scale=5, batch_size=64, n_samples=128):
+    toks = model.to_tokens(text, prepend_bos=True)
+    toks = toks.expand(batch_size, -1)
+    all_gen = []
+    for _ in range(0, n_samples, batch_size):
+        with model.hooks([(hp, partial(patch_resid, steering=steer, scale=scale))]):
+            gen_toks = model.generate(
+                toks,
+                max_new_tokens=30,
+                use_past_kv_cache=True,
+                top_k=50,
+                top_p=0.3,
+                verbose=False,
+            )
+            all_gen.extend(model.to_string(gen_toks))
+    return all_gen
 
 
 
@@ -177,3 +195,19 @@ def compute_scores(steer, model, name, criterion, make_plot=True, scales=None):
         with open(f"analysis_out/{name}_all_texts.json", "w") as f:
             json.dump(all_texts, f)
     return scores, coherences, products
+
+class LinearAdapter(nn.Module):
+    def __init__(self, d_model, d_sae):
+        super().__init__()
+        self.W = nn.Parameter(nn.init.kaiming_uniform_(torch.empty(d_model, d_sae)))
+        self.b = nn.Parameter(torch.zeros(d_sae))
+
+    def forward(self, x):
+        return x @ self.W + self.b
+    
+    @torch.no_grad()
+    def compute_optimal_input(self, y):
+        y_dev = y.device
+        W_pinv = torch.linalg.pinv(self.W)
+        x_optimal = (y.to(self.W.device) - self.b) @ W_pinv
+        return x_optimal.to(y_dev)

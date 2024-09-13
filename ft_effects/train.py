@@ -25,7 +25,7 @@ from steering.patch import patch_resid
 from baselines.analysis import steer_model
 from steering.evals_utils import multi_criterion_evaluation
 
-from ft_effects.utils import get_sae
+from ft_effects.utils import get_sae, LinearAdapter
 # %%
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -34,21 +34,6 @@ sae = get_sae()
 
 # %%
 
-class LinearAdapter(nn.Module):
-    def __init__(self, d_model, d_sae):
-        super().__init__()
-        self.W = nn.Parameter(nn.init.kaiming_uniform_(torch.empty(d_model, d_sae)))
-        self.b = nn.Parameter(torch.zeros(d_sae))
-
-    def forward(self, x):
-        return x @ self.W + self.b
-    
-    @torch.no_grad()
-    def compute_optimal_input(self, y):
-        y_dev = y.device
-        W_pinv = torch.linalg.pinv(self.W)
-        x_optimal = (y.to(self.W.device) - self.b) @ W_pinv
-        return x_optimal.to(y_dev)
 
 
 class HybridAdapter(nn.Module):
@@ -83,14 +68,20 @@ class HybridAdapter(nn.Module):
 
 def train(num_epochs, lr=1e-4):
     paths = [
-        # "effects/G2_2B_L12/65k_from_0",
-        # "effects/G2_2B_L12/65k_from_10k",
-        # "effects/G2_2B_L12/65k_from_20k",
-        # "effects/G2_2B_L12/65k_from_30k",
-        # "effects/G2_2B_L12/65k_from_40k",
-        "effects/G2_2B_L12/16k_from_0",
-        "effects/G2_2B_L12/sample_and_combine_16k",
-        "effects/G2_2B_L12/random",
+        "effects/G2_2B_L12/65k_from_0",
+        "effects/G2_2B_L12/65k_from_10k",
+        "effects/G2_2B_L12/65k_from_20k",
+        "effects/G2_2B_L12/65k_from_30k",
+        "effects/G2_2B_L12/65k_from_40k",
+
+        # "effects/G2_2B_L12/16k_from_0",
+        # "effects/G2_2B_L12/sample_and_combine_16k",
+
+        # "effects/G2_2B_L12/random",
+        # "effects/G2_2B_L12/random_2",
+        # "effects/G2_2B_L12/random_3",
+        # "effects/G2_2B_L12/random_4",
+        # "effects/G2_2B_L12/random_5",
     ]
 
     features = []
@@ -161,8 +152,8 @@ def train(num_epochs, lr=1e-4):
 
 # %%
 if __name__ == "__main__":
-    # adapter = LinearAdapter(sae.W_enc.shape[0], sae.W_enc.shape[1])
-    adapter = HybridAdapter(sae.W_enc, sae.W_enc.shape[0], sae.W_enc.shape[1])
+    adapter = LinearAdapter(sae.W_enc.shape[0], sae.W_enc.shape[1])
+    # adapter = HybridAdapter(sae.W_enc, sae.W_enc.shape[0], sae.W_enc.shape[1])
     # adapter = HybridAdapter(sae.W_dec.T, sae.W_enc.shape[0], sae.W_enc.shape[1])
 
     adapter.to(device)
@@ -171,7 +162,8 @@ if __name__ == "__main__":
     linear_adapter = LinearAdapter(sae.W_enc.shape[0], sae.W_enc.shape[1])
     linear_adapter.load_state_dict(torch.load("linear_adapter.pt"))
 
-    # torch.save(adapter.state_dict(), "linear_adapter.pt")
+# # %%
+#     torch.save(adapter.state_dict(), "linear_adapter.pt")
 # %%
 
 def find_optimal_steer(adapter, target, d_model,
@@ -200,6 +192,8 @@ def find_optimal_steer(adapter, target, d_model,
         loss = F.mse_loss(pred, target)
         loss.backward()
         optim.step()
+        if step % 1000 == 0:
+            print(f"Step {step}, Loss: {loss.item():.6f}")
         steer.data = steer.data / torch.norm(steer.data)
         if step % 10 == 0:
             pbar.set_postfix({"loss": f"{loss.item():.6f}"})
@@ -210,7 +204,7 @@ def find_optimal_steer(adapter, target, d_model,
     else:
         return steer.detach()
 
-def single_step_steer(adapter, target, bias_scale=1e-2):
+def single_step_steer(adapter, target, bias_scale=1):
     steer_vec = adapter.W @ target.to(device)
     steer_vec = steer_vec / torch.norm(steer_vec)
     bias_vec = adapter.W @ adapter.b
@@ -243,6 +237,18 @@ criterion = "Text mentions London or anything related to London."
 # target[ft_id] = target_value
 # criterion = "Text mentions birds or anything related to birds."
 
+# ft_name = "london_bridge"
+# ft_id = 14455
+# target[ft_id] = target_value
+# target[7272] = target_value
+# criterion = "Text mentions bridges in London."
+
+# ft_name = "recipe"
+# ft_id = 1
+# target[ft_id] = target_value
+# criterion = "The text is a recipe or a description of a scientific method. Specifically, it mentions serving in a dish or pouring into a beaker etc."
+
+
 
 # %%
 # optimal_steer = find_optimal_steer(adapter, target, sae.W_enc.shape[0], n_steps=int(1), target_scale=100)
@@ -256,26 +262,26 @@ if __name__ == "__main__":
     linear_single_step_steer = single_step_steer(linear_adapter, target, bias_scale=1)
     with torch.no_grad():
         linear_single_step_steer = linear_single_step_steer / torch.norm(linear_single_step_steer)
-
-    # optimal_steer = single_step_steer(adapter, target, bias_scale=1)
-    optimal_steer = find_optimal_steer(adapter,
-                                       target,
-                                       sae.W_enc.shape[0],
-                                       n_steps=int(1e4),
-                                       target_scale=200,
-                                    #    init_steer=linear_single_step_steer,
-                                       init_steer=torch.randn(sae.W_enc.shape[0]),
-                                    #    init_steer=torch.zeros(sae.W_enc.shape[0]),
-                                       )
+    linear_single_step_steer = linear_single_step_steer.cpu()
+    
+    # optimal_steer = adapter.compute_optimal_input(target*1)
+    optimal_steer = single_step_steer(adapter, target, bias_scale=0).cpu() ###TODO: bias scale 1
+    # optimal_steer = find_optimal_steer(adapter,
+    #                                    target,
+    #                                    sae.W_enc.shape[0],
+    #                                    n_steps=int(1e4),
+    #                                    target_scale=10,
+    #                                 #    init_steer=linear_single_step_steer,
+    #                                    init_steer=torch.randn(sae.W_enc.shape[0]),
+    #                                 #    init_steer=torch.zeros(sae.W_enc.shape[0]),
+    #                                    ).cpu()
 
     with torch.no_grad():
         optimal_steer = optimal_steer / torch.norm(optimal_steer)
     
-    # print('cosine sim between linear and optimal steer:', \
-    #     (linear_single_step_steer @ optimal_steer) / (torch.norm(linear_single_step_steer) * torch.norm(optimal_steer)))
-    # print()
-
-    optimal_steer = optimal_steer.cpu()
+    print('cosine sim between linear and optimal steer:', \
+        (linear_single_step_steer @ optimal_steer) / (torch.norm(linear_single_step_steer) * torch.norm(optimal_steer)))
+    print()
 
     # cosine sims between optimal steer and all vector of sae.W_dec
     sims = (sae.W_dec @ optimal_steer) / (torch.norm(sae.W_dec, dim=-1) * torch.norm(optimal_steer))
@@ -373,7 +379,7 @@ if __name__ == "__main__":
 
 # %%
 if __name__ == "__main__":
-    _ = compute_scores(sae.W_dec[ft_id], f"{ft_name}_decoder", criterion)
+    _ = compute_scores(sae.W_dec[ft_id], f"{ft_name}_decoder", criterion, scales=list(range(0, 240, 30)))
 
 
 
@@ -420,7 +426,7 @@ if __name__ == "__main__":
     scores, coherences, products = step_sweep()
 
 # %%
-bias_scales = [0, 0.5, 0.8, 1, 1.2, 1.5, 1.8, 2, 2.5, 3, 10]
+bias_scales = [0, 0.2, 0.5, 0.8, 1, 1.2, 1.5, 1.8, 2, 2.5]
 def bias_sweep():
     scales = list(range(0, 220, 20))
     scores = []
@@ -499,6 +505,65 @@ if __name__ == "__main__":
     print(bottom_v)
     print(bottom_i)
 
+    
+
 
 
 # %%
+
+def find_rotation_matrix_svd(v1, v2):
+    """
+    Find the rotation matrix that rotates v1 to v2 using SVD.
+    v1 and v2 are assumed to be 1000-dimensional unit vectors.
+    """
+    # Ensure input vectors are unit vectors
+    v1 = v1 / torch.norm(v1)
+    v2 = v2 / torch.norm(v2)
+
+    # Compute the covariance matrix
+    H = torch.outer(v2, v1)
+
+    # Perform SVD
+    U, _, Vt = torch.linalg.svd(H)
+
+    # Compute the rotation matrix
+    R = torch.matmul(U, Vt)
+
+    # Ensure proper rotation (det(R) = 1)
+    det = torch.det(R)
+    if det < 0:
+        Vt[-1, :] *= -1
+        R = torch.matmul(U, Vt)
+
+    return R
+
+
+
+# %%
+if __name__ == "__main__":
+    b_to_subtract = adapter.W @ adapter.b
+    b_to_subtract = b_to_subtract / torch.norm(b_to_subtract)
+
+    R = find_rotation_matrix_svd(sae.W_dec[ft_id], optimal_steer)
+# %%
+
+if __name__ == "__main__":
+    rotated_steer = R @ sae.W_dec[ft_id]
+    rotated_steer = rotated_steer / torch.norm(rotated_steer)
+    rotated_steer = rotated_steer.to(device)
+
+    rotated_steer = rotated_steer - b_to_subtract
+    rotated_steer = rotated_steer / torch.norm(rotated_steer)
+
+    _ = compute_scores(rotated_steer, f"{ft_name}_rotated", criterion, scales=list(range(0, 240, 30)))
+# %%
+if __name__ == "__main__":
+    opposite_rotated_steer = R.T @ R.T @ sae.W_dec[ft_id]
+    opposite_rotated_steer = opposite_rotated_steer / torch.norm(opposite_rotated_steer)
+    opposite_rotated_steer = opposite_rotated_steer.to(device)
+    opposite_rotated_steer = opposite_rotated_steer - b_to_subtract
+    opposite_rotated_steer = opposite_rotated_steer / torch.norm(opposite_rotated_steer)
+    _ = compute_scores(opposite_rotated_steer, f"{ft_name}_opposite_rotated", criterion, scales=list(range(0, 240, 30)))
+
+# %%
+

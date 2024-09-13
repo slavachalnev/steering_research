@@ -23,30 +23,28 @@ from sae_lens import SAE
 
 from steering.sae import JumpReLUSAE
 
+from ft_effects.utils import LinearAdapter, steer_model
+
 import numpy as np
 from huggingface_hub import hf_hub_download
 from steering.utils import normalise_decoder
 
 # %%
 
-def load_sae_steer(path):
-
-    with open(os.path.join(path, "feature_steer.json"), 'r') as f:
-        steer = json.load(f)
-
-    sae_load_method = steer.get('sae_load_method', 'saelens')
+def load_sae_model(config):
+    sae_load_method = config.get('sae_load_method', 'saelens')
 
     if sae_load_method == 'saelens':
         sae, _, _ = SAE.from_pretrained(
-            release=steer['sae'],
-            sae_id=steer['layer'],
+            release=config['sae'],
+            sae_id=config['layer'],
             device='cpu'
         )
         normalise_decoder(sae)
     elif sae_load_method == 'gemmascope':
         path_to_params = hf_hub_download(
-            repo_id=steer['repo_id'],
-            filename=steer['filename'],
+            repo_id=config['repo_id'],
+            filename=config['filename'],
             force_download=False
         )
         params = np.load(path_to_params)
@@ -57,31 +55,60 @@ def load_sae_steer(path):
     else:
         raise ValueError(f"Unknown sae_load_method: {sae_load_method}")
 
+    return sae
+
+def load_sae_steer(path):
+    # Read the configuration for SAE steering
+    with open(os.path.join(path, "feature_steer.json"), 'r') as f:
+        config = json.load(f)
+
+    # Load SAE model
+    sae = load_sae_model(config)
+
+    # Get steering vector
     vectors = []
-    for ft_id, ft_scale in steer['features']:
+    for ft_id, ft_scale in config['features']:
         vectors.append(sae.W_dec[ft_id] * ft_scale)
     vectors = torch.stack(vectors, dim=0)
     vec = vectors.sum(dim=0)
     vec = vec / torch.norm(vec, dim=-1, keepdim=True)
+    hp = config['hp']
+    layer = config['layer']
 
-    return vec, steer['hp'], steer['layer']
+    return vec, hp, layer
 
-def steer_model(model, steer, hp, text, scale=5, batch_size=64, n_samples=128):
-    toks = model.to_tokens(text, prepend_bos=True)
-    toks = toks.expand(batch_size, -1)
-    all_gen = []
-    for _ in range(0, n_samples, batch_size):
-        with model.hooks([(hp, partial(patch_resid, steering=steer, scale=scale))]):
-            gen_toks = model.generate(
-                toks,
-                max_new_tokens=30,
-                use_past_kv_cache=True,
-                top_k=50,
-                top_p=0.3,
-                verbose=False,
-            )
-            all_gen.extend(model.to_string(gen_toks))
-    return all_gen
+def single_step_steer(adapter, target, bias_scale=1):
+    # used for optimised steering
+    steer_vec = adapter.W @ target.to(device)
+    steer_vec = steer_vec / torch.norm(steer_vec)
+    bias_vec = adapter.W @ adapter.b
+    bias_vec = bias_vec / torch.norm(bias_vec)
+    bias_vec = bias_vec * bias_scale
+    steer = steer_vec - bias_vec
+    steer = steer / torch.norm(steer, dim=-1, keepdim=True)
+    return steer
+
+def load_optimised_steer(path):
+    with open(os.path.join(path, "optimised_steer.json"), 'r') as f:
+        config = json.load(f)
+    
+    layer = config['layer']
+
+    sae = load_sae_model(config)
+
+    adapter = LinearAdapter(sae.W_enc.shape[0], sae.W_enc.shape[1])
+    adapter.load_state_dict(torch.load(f"adapter_layer_{layer}.pt"))
+    adapter.to(device)
+
+    target = torch.zeros(adapter.W.shape[1]).to(device)
+    for ft_id, ft_scale in config['features']:
+        target[ft_id] = ft_scale
+
+    vec = single_step_steer(adapter, target, bias_scale=1)
+
+    hp = config['hp']
+    return vec, hp, layer
+
 
 def plot(path, coherence, score, product, scales, method, steering_goal_name):
     fig = go.Figure()
@@ -172,19 +199,26 @@ if __name__ == "__main__":
 
     for path in paths:
         # Activation Steering
-        print("Activation Steering")
-        pos_examples, neg_examples, val_examples, layer = load_act_steer(path)
-        steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
-        steer = steer / torch.norm(steer, dim=-1, keepdim=True)
-        hp = f"blocks.{layer}.hook_resid_post"
-        result = analyse_steer(model, steer, hp, path, method='ActSteer')
-        results.append(result)
+        # print("Activation Steering")
+        # pos_examples, neg_examples, val_examples, layer = load_act_steer(path)
+        # steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
+        # steer = steer / torch.norm(steer, dim=-1, keepdim=True)
+        # hp = f"blocks.{layer}.hook_resid_post"
+        # result = analyse_steer(model, steer, hp, path, method='ActSteer')
+        # results.append(result)
 
-        # SAE Steering
-        print("SAE Steering")
-        steer, hp, layer = load_sae_steer(path)
+        # # SAE Steering
+        # print("SAE Steering")
+        # steer, hp, layer = load_sae_steer(path)
+        # steer = steer.to(device)
+        # result = analyse_steer(model, steer, hp, path, method='SAE')
+        # results.append(result)
+
+        # Optimized Steering
+        print("Optimized Steering")
+        steer, hp, layer = load_optimised_steer(path)
         steer = steer.to(device)
-        result = analyse_steer(model, steer, hp, path, method='SAE')
+        result = analyse_steer(model, steer, hp, path, method='OptimisedSteer')
         results.append(result)
 
     # Write the results to a JSON file

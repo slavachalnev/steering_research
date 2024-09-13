@@ -6,29 +6,17 @@ sys.path.append(os.path.abspath('..'))
 import torch
 from torch import nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, TensorDataset, Dataset
-from torch.optim.lr_scheduler import CosineAnnealingLR
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from functools import partial
-import json
 import einops
 import scipy.linalg as linalg
 
 from transformer_lens import HookedTransformer
-from huggingface_hub import hf_hub_download
 
-from steering.sae import JumpReLUSAE
-from steering.patch import patch_resid
-
-from baselines.analysis import steer_model
-from steering.evals_utils import multi_criterion_evaluation
-
-from ft_effects.train import LinearAdapter
-from ft_effects.utils import get_sae, compute_scores
+from ft_effects.utils import get_sae, compute_scores, LinearAdapter
 
 torch.set_grad_enabled(False)
 # %%
@@ -106,43 +94,57 @@ def analyze_transformations(X, Y, include_bias=True, linear_threshold=0.01, rota
     print(f"Rotation MSE: {mse_rotation}")
     print(f"Rotation is good: {mse_rotation < rotation_threshold}")
 
-    return A, b, R, mse_linear, mse_rotation
+    return torch.tensor(R).to(device)
+
+# remove ft_id 14455 and 4230 from normed_adapter
+censored_adapter = torch.cat([normed_adapter[:, :14455], normed_adapter[:, 14456:4230], normed_adapter[:, 4231:]], dim=1)
+censored_encoder = torch.cat([normed_encoder[:, :14455], normed_encoder[:, 14456:4230], normed_encoder[:, 4231:]], dim=1)
+censored_decoder = torch.cat([normed_decoder[:14455], normed_decoder[14456:4230], normed_decoder[4231:]], dim=0)
 
 # %%
-A, b, R, mse_linear, mse_rotation = analyze_transformations(normed_adapter, normed_encoder, include_bias=False)
+R = analyze_transformations(censored_adapter, censored_encoder, include_bias=False)
 
 # %%
 
-A_dec, b_dec, R_dec, mse_linear_dec, mse_rotation_dec = analyze_transformations(normed_adapter, normed_decoder.T, include_bias=False)
+R_dec = analyze_transformations(censored_adapter, censored_decoder.T, include_bias=False)
 
 # %%
 
-# # save A_dec as torch tensor
-# torch.save(torch.tensor(A_dec), "A_dec.pt")
-# torch.save(torch.tensor(b_dec), "b_dec.pt")
-
-# save R_dec as torch tensor
-torch.save(torch.tensor(R_dec), "R_dec.pt")
-
+px.imshow(R_dec[:200, :200].cpu(), title="Rotation Matrix", color_continuous_scale="RdBu", color_continuous_midpoint=0).show()
+px.imshow(R_dec[-200:, -200:].cpu(), title="Rotation Matrix", color_continuous_scale="RdBu", color_continuous_midpoint=0).show()
 
 # %%
-sae = get_sae()
-sae.to(device)
+# histogram of diagonal values of R_dec
+px.histogram(torch.diag(R_dec).cpu().numpy(), title="Diagonal of Rotation Matrix", labels={'value': 'Value', 'count': 'Frequency'}, marginal='box').show()
+
+# %%
+# check that R_dec is a rotation matrix
+print(torch.norm(R_dec @ R_dec.T - torch.eye(R_dec.shape[0])))
+px.imshow((R_dec @ R_dec.T)[:30, :30], title="R_dec @ R_dec.T", color_continuous_scale="RdBu", color_continuous_midpoint=0).show()
+
+# %%
 model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device)
 
 # %%
-ft_name = "london"
-ft_id = 14455 # london
-criterion = "Text mentions London or anything related to London."
+# ft_name = "london"
+# ft_id = 14455 # london
+# criterion = "Text mentions London or anything related to London."
 
-# ft_name = "wedding"
-# ft_id = 4230 # wedding
-# criterion = "Text mentions weddings or anything related to weddings."
+ft_name = "wedding"
+ft_id = 4230 # wedding
+criterion = "Text mentions weddings or anything related to weddings."
+
+# ft_name = "recipe"
+# ft_id = 1
+# criterion = "The text is a recipe or a description of a scientific method. Specifically, it mentions serving in a dish or pouring into a beaker etc."
+
 
 # %%
-R_dec = torch.tensor(R_dec).to(device)
-print(R_dec.device)
-transformed_steer = R_dec.T @ sae.W_dec[ft_id]
+sae.to(device)
+# transformed_steer = R_dec.T @ R_dec.T @ sae.W_dec[ft_id] # two rotations
+# transformed_steer = R_dec.T @ sae.W_dec[ft_id] # one rotation
+transformed_steer = R_dec @ sae.W_dec[ft_id]  # rotate in opposite direction
+
 transformed_steer = transformed_steer / torch.norm(transformed_steer)
 
 # with adapter bias
@@ -158,6 +160,24 @@ transformed_steer = transformed_steer - 1 * b
 transformed_steer = transformed_steer / torch.norm(transformed_steer)
 
 _ = compute_scores(transformed_steer, model, f"{ft_name}_rotated_decoder_with_bias", criterion, scales=list(range(0, 220, 20)))
+
+# %%
+
+# random steer with adapter bias
+random_steer = torch.randn(sae.W_enc.shape[0]).to(device)
+random_steer = random_steer / torch.norm(random_steer)
+random_steer_with_bias = random_steer - 1 * b
+random_steer_with_bias = random_steer_with_bias / torch.norm(random_steer_with_bias)
+_ = compute_scores(random_steer_with_bias, model, f"random_steer_with_bias", criterion, scales=list(range(0, 220, 20)))
+
+# compared to no adapter bias
+_ = compute_scores(random_steer, model, f"random_steer_no_bias", criterion, scales=list(range(0, 220, 20)))
+
+# %%
+
+
+# %%
+
 # %%
 
 
