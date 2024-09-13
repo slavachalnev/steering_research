@@ -174,29 +174,4 @@ if __name__ == "__main__":
 
 
 # %%
-
-if __name__ == "__main__":
-    # load R_dec from ft_effects/adapter_analysis.py
-    R_dec = torch.load("R_dec.pt").to(device)
-    transformed_steer = R_dec.T @ sae.W_dec[ft_id]
-    transformed_steer = transformed_steer / torch.norm(transformed_steer)
-    # _ = compute_scores(transformed_steer, f"{ft_name}_rotated_decoder", criterion, scales=list(range(0, 220, 20)))
-
-# %%
-if __name__ == "__main__":
-    from ft_effects.train import LinearAdapter
-    # with adapter bias
-    adapter = LinearAdapter(sae.W_enc.shape[0], sae.W_enc.shape[1])
-    adapter.load_state_dict(torch.load("linear_adapter.pt"))
-    adapter.to(device)
-    b = adapter.W @ adapter.b
-    b = b / torch.norm(b)
-    print(b.shape)
-    transformed_steer = R_dec.T @ sae.W_dec[ft_id]
-    transformed_steer = transformed_steer / torch.norm(transformed_steer)
-    transformed_steer = transformed_steer - 1.5 * b
-    transformed_steer = transformed_steer / torch.norm(transformed_steer)
-    _ = compute_scores(transformed_steer, model, f"{ft_name}_rotated_decoder_with_bias", criterion, scales=list(range(0, 220, 20)))
-
-# %%
 # %%
