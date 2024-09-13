@@ -40,7 +40,11 @@ export default function App() {
 	const [activations, setActivations] = useState(bret_tokens.activations);
 
 	const [processingState, setProcessingState] = useState("");
-	const [magnified, setMagnified] = useState<string>("");
+	const [magnified, setMagnified] = useState<number>(-1);
+
+	const [maxActivations, setMaxActivations] = useState<Record<string, number>>(
+		{}
+	);
 
 	const processText = async () => {
 		setPassage(text);
@@ -58,13 +62,19 @@ export default function App() {
 		setFeatures(data.results);
 		setActivations(data.activations);
 		setTokens(data.tokens);
-		setText("");
 	};
 
 	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
-		// TODO: Implement passage processing logic
-		processText();
+		if (text.trim() != "") {
+			processText();
+
+			setProcessedFeatures([]);
+			setActivations([]);
+			setTokens([]);
+			setFeatures([]);
+			setPassage("");
+		}
 	};
 
 	const get_activations = async () => {
@@ -90,71 +100,136 @@ export default function App() {
 		console.log(dataWithId);
 		setProcessingState("");
 		setProcessedFeatures([...dataWithId]);
+		setText("");
 	};
 
 	const onMagnify = (id: string) => {
-		const index = processedFeatures.findIndex((feature) => feature.id === id);
-		setMagnified(index !== -1 ? index.toString() : "");
+		const index: number = processedFeatures.findIndex(
+			(feature) => feature.id === id
+		);
+		setMagnified(index != -1 ? processedFeatures[index].feature : -1);
+	};
+
+	const removeFeature = (id: string) => {
+		const indexToRemove = processedFeatures.findIndex(
+			(feature) => feature.id == id
+		);
+
+		if (indexToRemove !== -1) {
+			setProcessedFeatures((prevFeatures) =>
+				prevFeatures.filter((_, index) => index !== indexToRemove)
+			);
+			setActivations((prevActivations) =>
+				prevActivations.map((row) =>
+					row.filter((_, index) => index !== indexToRemove)
+				)
+			);
+
+			if (magnified == processedFeatures[indexToRemove].feature) {
+				setMagnified(-1);
+			}
+		}
 	};
 
 	useEffect(() => {
-		// if (features.length > 0) get_activations();
+		if (features.length > 0 && text != "") get_activations();
 	}, [features]);
 
 	useEffect(() => {
-		// processText();
-		// console.log(processedFeatures);
-		// console.log(tokens);
-		// console.log(activations);
+		const maxActivations = processedFeatures.map((feature) => {
+			return {
+				[feature.feature]: feature.feature_results.reduce((max, current) =>
+					current.maxValue > max.maxValue ? current : max
+				).binMax,
+			};
+		});
+		const result = Object.assign({}, ...maxActivations);
+		setMaxActivations(result);
+	}, [processedFeatures]);
+
+	useEffect(() => {
+		console.log(activations);
+		console.log(processedFeatures);
 	}, []);
+
+	const containerWidth = "675px";
+	const borderRadius = "4px";
+	const fontSize = "16px";
+	const padding = "10px";
 
 	return (
 		<div
 			style={{
 				display: "flex",
 				flexDirection: "column",
-				// justifyContent: "space-between",
-				// transform: inspectedFeature
-				// 	? "translateX(0)"
-				// 	: "translateX(calc(50% - 50%))", // Center the content
+				alignItems: "center",
 				width: "100vw",
 			}}
 		>
 			<form
 				onSubmit={handleSubmit}
-				style={{ margin: "auto", marginTop: "60px", width: "800px" }}
+				style={{ marginTop: "60px", width: containerWidth }}
 			>
 				<textarea
 					value={text}
 					onChange={(e) => setText(e.target.value)}
 					placeholder="Paste your passage here"
 					rows={5}
-					style={{ width: "800px", marginBottom: "10px" }}
+					style={{
+						width: "100%",
+						marginBottom: "10px",
+						fontSize,
+						borderRadius,
+						padding,
+					}}
 				/>
-				<button type="submit">Process Passage</button>
+				<button
+					type="submit"
+					style={{
+						backgroundColor: "white",
+						border: "none",
+						color: "grey",
+						padding,
+						textAlign: "center",
+						textDecoration: "none",
+						display: "inline-block",
+						fontSize,
+						margin: "4px 2px",
+						cursor: "pointer",
+						borderRadius,
+						transition: "background-color 0.3s",
+					}}
+				>
+					Process Passage
+				</button>
 			</form>
-			<div>{processingState}</div>
+			<div style={{ width: containerWidth }}>{processingState}</div>
 			<div
 				style={{
 					position: "relative",
-					paddingBottom: "7px",
-					paddingTop: "7px",
+					padding: `${padding} 0`,
 					textAlign: "left",
 					fontSize: ".75rem",
 					borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
 					userSelect: "none",
 					overflow: "hidden",
 					color: "white",
-					// whiteSpace: "nowrap",
-					maxWidth: "675px",
-					marginLeft: "15px",
+					width: containerWidth,
 				}}
 			>
 				<div style={{ display: "inline-block" }}>
 					{tokens.slice(1).map((token: string, i: number) => {
-						if (magnified != "") {
-							const value = activations[i + 1][parseInt(magnified) as number];
-							const maxValue = Math.max(...activations[i + 1]);
+						if (magnified != -1) {
+							const magnifiedIndex = processedFeatures.findIndex(
+								(feature) => feature.feature == magnified
+							);
+							console.log(processedFeatures);
+							console.log(magnified);
+
+							const maxValue =
+								maxActivations[processedFeatures[magnifiedIndex]["feature"]];
+							const value = activations[i + 1][magnifiedIndex];
+
 							return (
 								<TokenDisplay
 									key={i}
@@ -181,7 +256,7 @@ export default function App() {
 				<FeatureColumn
 					onMagnify={onMagnify}
 					processedFeatures={processedFeatures}
-					setProcessedFeatures={setProcessedFeatures}
+					removeFeature={removeFeature}
 				/>
 			)}
 		</div>

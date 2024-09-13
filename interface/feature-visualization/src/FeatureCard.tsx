@@ -81,7 +81,13 @@ export const TokenDisplay = ({
 	);
 };
 
-const ActivationItem = ({ activation }: { activation: any }) => {
+const ActivationItem = ({
+	activation,
+	maxAct,
+}: {
+	activation: any;
+	maxAct: number;
+}) => {
 	// Find the index of the token with the highest value
 	const maxValueIndex = activation.values.indexOf(
 		Math.max(...activation.values)
@@ -110,7 +116,7 @@ const ActivationItem = ({ activation }: { activation: any }) => {
 						key={i + startIndex}
 						token={token}
 						value={activation.values[i + startIndex]}
-						maxValue={Math.max(...activation.values)}
+						maxValue={maxAct}
 					/>
 				))}
 			</div>
@@ -242,12 +248,14 @@ function FeatureCard({
 	onDelete,
 	onMagnify,
 	activations = [],
+	maxAct,
 }: {
 	feature: number;
 	featureId: string;
 	onDelete: (id: string) => void;
 	onMagnify: (id: string) => void;
 	activations: any;
+	maxAct: number;
 }) {
 	const [description, setDescription] = useState("");
 	const [expanded, setExpanded] = useState(false);
@@ -330,7 +338,7 @@ function FeatureCard({
 
 			<div>
 				{activations.slice(0, 3).map((activation: any, index: number) => (
-					<ActivationItem key={index} activation={activation} />
+					<ActivationItem key={index} activation={activation} maxAct={maxAct} />
 				))}
 			</div>
 
@@ -344,7 +352,11 @@ function FeatureCard({
 				}}
 			>
 				{activations.slice(3, 10).map((activation: any, index: number) => (
-					<ActivationItem key={index + 3} activation={activation} />
+					<ActivationItem
+						key={index + 3}
+						activation={activation}
+						maxAct={maxAct}
+					/>
 				))}
 			</div>
 
