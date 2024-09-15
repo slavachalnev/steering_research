@@ -101,10 +101,6 @@ export default function App() {
 		setProcessingState("");
 
 		return dataWithId;
-		console.log(dataWithId);
-		setProcessingState("");
-		setProcessedFeatures([...dataWithId]);
-		setText("");
 	};
 
 	const onMagnify = (id: string) => {
@@ -261,6 +257,7 @@ export default function App() {
 								maxValue={focusToken != -1 ? 1 : maxValue}
 								backgroundColor={focusToken != -1 ? "211, 56,43" : undefined}
 								color={"white"}
+								fontSize={"18px"}
 								inspectToken={inspectToken}
 							/>
 						);
