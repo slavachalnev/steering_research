@@ -199,20 +199,20 @@ if __name__ == "__main__":
 
     for path in paths:
         # Activation Steering
-        # print("Activation Steering")
-        # pos_examples, neg_examples, val_examples, layer = load_act_steer(path)
-        # steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
-        # steer = steer / torch.norm(steer, dim=-1, keepdim=True)
-        # hp = f"blocks.{layer}.hook_resid_post"
-        # result = analyse_steer(model, steer, hp, path, method='ActSteer')
-        # results.append(result)
+        print("Activation Steering")
+        pos_examples, neg_examples, val_examples, layer = load_act_steer(path)
+        steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
+        steer = steer / torch.norm(steer, dim=-1, keepdim=True)
+        hp = f"blocks.{layer}.hook_resid_post"
+        result = analyse_steer(model, steer, hp, path, method='ActSteer')
+        results.append(result)
 
-        # # SAE Steering
-        # print("SAE Steering")
-        # steer, hp, layer = load_sae_steer(path)
-        # steer = steer.to(device)
-        # result = analyse_steer(model, steer, hp, path, method='SAE')
-        # results.append(result)
+        # SAE Steering
+        print("SAE Steering")
+        steer, hp, layer = load_sae_steer(path)
+        steer = steer.to(device)
+        result = analyse_steer(model, steer, hp, path, method='SAE')
+        results.append(result)
 
         # Optimized Steering
         print("Optimized Steering")
