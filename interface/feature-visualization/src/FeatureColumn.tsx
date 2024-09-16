@@ -1,20 +1,6 @@
 import React from "react";
 import FeatureCard from "./FeatureCard";
-
-interface FeatureData {
-	binMax: number;
-	binMin: number;
-	maxValue: number;
-	minValue: number;
-	tokens: string[];
-	values: number[];
-}
-
-interface ProcessedFeaturesType {
-	feature: number;
-	id: string;
-	feature_results: FeatureData[];
-}
+import { ProcessedFeaturesType, Activation } from "./types";
 
 const FeatureColumn = ({
 	processedFeatures,
@@ -49,6 +35,7 @@ const FeatureColumn = ({
 							const maxAct = feature.feature_results.reduce((max, current) =>
 								current.maxValue > max.maxValue ? current : max
 							).binMax;
+							const activations: Activation[] = feature.feature_results;
 							return (
 								<React.Fragment key={feature.id + i}>
 									<FeatureCard
@@ -56,7 +43,7 @@ const FeatureColumn = ({
 										featureId={feature.id}
 										onDelete={removeFeature}
 										onMagnify={onMagnify}
-										activations={feature.feature_results}
+										activations={activations}
 										maxAct={maxAct}
 									/>
 									<div style={{ height: "10px", width: "100%" }} />

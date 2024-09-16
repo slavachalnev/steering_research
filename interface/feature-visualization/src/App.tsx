@@ -98,6 +98,7 @@ export default function App() {
 				id: crypto.randomUUID(),
 			});
 		});
+		console.log(dataWithId);
 		setProcessingState("");
 
 		return dataWithId;
@@ -271,13 +272,13 @@ export default function App() {
 					removeFeature={removeFeature}
 				/>
 			)}
-			{processedTokenFeatures.length > 0 && (
+			{/* {processedTokenFeatures.length > 0 && (
 				<FeatureColumn
 					onMagnify={onMagnify}
 					processedFeatures={processedTokenFeatures}
 					removeFeature={removeFeature}
 				/>
-			)}
+			)} */}
 		</div>
 	);
 }

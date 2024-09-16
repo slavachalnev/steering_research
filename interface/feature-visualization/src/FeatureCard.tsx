@@ -1,8 +1,9 @@
-// import { useState, useEffect, useRef } from "react";
 import "./App.css";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { getBaseUrl } from "./utils";
+import { Activation } from "./types";
+
+import { TestSamples } from "./TestSamples";
 
 export const TokenDisplay = ({
 	index,
@@ -11,7 +12,7 @@ export const TokenDisplay = ({
 	maxValue,
 	color = "black",
 	backgroundColor = "42, 97, 211",
-	fontSize = "12px",
+	fontSize = ".75rem",
 	inspectToken = (id: number) => {},
 }: {
 	index: number;
@@ -66,7 +67,7 @@ export const TokenDisplay = ({
 			ref={spanRef}
 			style={{
 				position: "relative",
-				paddingLeft: addSpace ? "4px" : "0px",
+				paddingLeft: addSpace ? `${3.25}px` : "0px",
 				display: "inline-block",
 			}}
 			onMouseEnter={() => {
@@ -89,7 +90,7 @@ export const TokenDisplay = ({
 						backgroundColor: "rgba(0, 0, 0, 0.8)",
 						color: "white",
 						borderRadius: "4px",
-						fontSize: "12px",
+						// fontSize: "12px",
 						whiteSpace: "nowrap",
 						padding: "2px 4px",
 						zIndex: 1000,
@@ -118,12 +119,12 @@ export const TokenDisplay = ({
 const ActivationItem = ({
 	activation,
 	maxAct,
+	lastItem = false,
 }: {
-	activation: any;
+	activation: Activation;
 	maxAct: number;
+	lastItem?: boolean;
 }) => {
-	console.log(activation);
-
 	// Find the index of the token with the highest value
 	const maxValueIndex = activation.values.indexOf(
 		Math.max(...activation.values)
@@ -140,7 +141,7 @@ const ActivationItem = ({
 				paddingTop: "7px",
 				textAlign: "left",
 				fontSize: ".75rem",
-				borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
+				borderBottom: lastItem ? "none" : "1px solid rgba(0, 0, 0, 0.1)",
 				userSelect: "none",
 				overflow: "hidden",
 				whiteSpace: "nowrap",
@@ -164,12 +165,10 @@ const ActivationItem = ({
 const FeatureCardCommands = ({
 	onDelete,
 	onMagnify,
-	onTest,
 	featureId,
 }: {
 	onDelete: (id: string) => void;
 	onMagnify: (id: string) => void;
-	onTest: () => void;
 	featureId: string;
 }) => {
 	return (
@@ -182,33 +181,6 @@ const FeatureCardCommands = ({
 				gap: "8px",
 			}}
 		>
-			<div
-				style={{
-					cursor: "pointer",
-					fontSize: "16px",
-					color: "gray",
-					transition: "color 0.1s ease-in-out",
-				}}
-				onClick={() => onTest()}
-				onMouseEnter={(e) => (e.currentTarget.style.color = "black")}
-				onMouseLeave={(e) => (e.currentTarget.style.color = "gray")}
-			>
-				<svg
-					width="16"
-					height="16"
-					viewBox="0 0 16 16"
-					fill="none"
-					xmlns="http://www.w3.org/2000/svg"
-				>
-					<path
-						d="M12.5 1.5L14.5 3.5M9.5 4.5L11.5 2.5L13.5 4.5L11.5 6.5L9.5 4.5ZM2.5 13.5L6.5 9.5L8.5 11.5L4.5 15.5H2.5V13.5Z"
-						stroke="currentColor"
-						strokeWidth="1.5"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-					/>
-				</svg>
-			</div>
 			<div
 				style={{
 					cursor: "pointer",
@@ -300,6 +272,7 @@ const SampleToggle = ({
 				transform: expanded ? "rotate(-180deg)" : "rotate(0deg)",
 				color: "black",
 				userSelect: "none",
+				textAlign: "center",
 			}}
 			aria-label={expanded ? "Collapse" : "Expand"}
 		>
@@ -307,6 +280,22 @@ const SampleToggle = ({
 		</div>
 	);
 };
+
+function FeatureCardSubHeader({ text }: { text: string }) {
+	return (
+		<div
+			style={{
+				// fontSize: "12px",
+				// fontSize: ".75rem",
+				color: "grey",
+				fontWeight: "bold",
+				marginTop: "4px",
+			}}
+		>
+			{text}
+		</div>
+	);
+}
 
 function FeatureCard({
 	feature,
@@ -320,7 +309,7 @@ function FeatureCard({
 	featureId: string;
 	onDelete: (id: string) => void;
 	onMagnify: (id: string) => void;
-	activations: any;
+	activations: Activation[];
 	maxAct: number;
 }) {
 	const [description, setDescription] = useState("");
@@ -328,84 +317,6 @@ function FeatureCard({
 	const [contentHeight, setContentHeight] = useState("0px");
 	const contentRef = useRef<HTMLDivElement>(null);
 	const [opacity, setOpacity] = useState(0);
-
-	// Variables related to testing
-	const [testText, setTestText] = useState("");
-	const [showTest, setShowTest] = useState<boolean>(false);
-	const [loading, setLoading] = useState<boolean>(false);
-	const testTextRef = useRef<HTMLDivElement>(null);
-	const [testActivations, setTestActivations] = useState<any>([
-		[
-			[0],
-			[0],
-			[2.229448080062866],
-			[0.4582373797893524],
-			[0.826278805732727],
-			[1.7092781066894531],
-			[1.4163553714752197],
-		],
-	]);
-	const [textTokens, setTextTokens] = useState<any>([
-		"These",
-		"▁are",
-		"▁ancient",
-		"▁sum",
-		"er",
-		"ian",
-		"▁texts",
-	]);
-
-	const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
-		const newText = e.currentTarget.textContent || "";
-		if (newText !== testText) {
-			setTestText(newText);
-		}
-	};
-
-	const onTest = () => {
-		setShowTest(true);
-		setTimeout(() => {
-			testTextRef.current?.focus();
-		}, 100);
-	};
-
-	const submitTest = async (e: React.FormEvent<HTMLDivElement>) => {
-		setLoading(true);
-
-		try {
-			const url = `${getBaseUrl()}/get_max_feature_acts?text=${encodeURIComponent(
-				testText
-			)}&features=${feature}`;
-			const response = await fetch(url, {
-				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-				},
-			});
-
-			if (!response.ok) {
-				throw new Error("Network response was not ok");
-			}
-
-			const data = await response.json();
-			console.log("Max feature acts data:", data);
-			// Process the data as needed
-			setTestActivations(data.activations);
-			setTextTokens(data.tokens);
-		} catch (error) {
-			console.error("Error fetching max feature acts:", error);
-			// Handle the error (e.g., show an error message to the user)
-		} finally {
-			setLoading(false);
-			setShowTest(false);
-		}
-
-		// setTimeout(() => {
-		// 	setLoading(false);
-		// 	setShowTest(false);
-		// 	e.target.blur();
-		// }, 1000);
-	};
 
 	useEffect(() => {
 		if (contentRef.current) {
@@ -433,12 +344,13 @@ function FeatureCard({
 				paddingBottom: "4px",
 				borderRadius: "15px",
 				margin: "0 12px",
-				textAlign: "center",
+				color: "black",
 				width: "calc(100% - 24px)",
 				maxWidth: "650px",
 				position: "relative",
 			}}
 		>
+			{/* CARD HEADER */}
 			<div
 				style={{
 					display: "flex",
@@ -449,22 +361,23 @@ function FeatureCard({
 				<FeatureCardCommands
 					onDelete={onDelete}
 					onMagnify={onMagnify}
-					onTest={onTest}
 					featureId={featureId}
 				/>
 				<div
 					style={{
-						borderRadius: "5px",
+						borderRadius: "8px",
 						backgroundColor: "rgba(42, 97, 211, .7)",
-						padding: "1px",
-						fontSize: ".75rem",
+						padding: "4px",
+						fontSize: "1rem",
+						fontWeight: "bold",
+
 						width: "fit-content",
 						height: "fit-content",
 						whiteSpace: "nowrap",
 						color: "white",
 					}}
 				>
-					Feature {feature}
+					{feature}
 				</div>
 				<div
 					style={{
@@ -483,177 +396,55 @@ function FeatureCard({
 
 			<div
 				style={{
-					position: "relative",
-					marginTop: "6px",
-					minHeight: "30px", // Adjust this value as needed
-					height: "auto",
-				}}
-				onClick={() => {
-					console.log("clicked");
-					setShowTest(true);
-					setTimeout(() => {
-						testTextRef.current?.focus();
-					}, 100);
+					padding: "4px",
 				}}
 			>
-				<div
-					ref={testTextRef}
-					contentEditable={true}
-					style={{
-						width: "100%",
-						maxWidth: "100%",
-						minWidth: "100%",
-						borderRadius: "4px",
-						fontSize: "12px",
-						padding: "3px",
-						fontFamily: "Inter",
-						textAlign: "left",
-						lineHeight: "1.5",
-						color: "black",
-						cursor: "text",
-						border: "0px solid transparent",
-						minHeight: "24px",
-						outline: "none",
-						whiteSpace: "pre-wrap",
-						overflowWrap: "break-word",
-						display: showTest ? "block" : "none",
-					}}
-					onFocus={() => setShowTest(true)}
-					onBlur={() => setShowTest(false)}
-					onInput={handleInput}
-					onKeyDown={(e) => {
-						if (e.key === "Enter" && !e.shiftKey) {
-							e.preventDefault();
-							submitTest(e);
-						}
-					}}
-				/>
-				{testActivations && textTokens && !showTest && (
-					<div
-						style={{
-							width: "100%",
-							maxWidth: "100%",
-							minWidth: "100%",
-							borderRadius: "4px",
-							fontSize: "12px",
-							padding: "3px",
-							fontFamily: "Inter",
-							textAlign: "left",
-							lineHeight: "1.5",
-							color: "black",
-							minHeight: "24px",
-							whiteSpace: "pre-wrap",
-							overflowWrap: "break-word",
-							position: "absolute",
-							userSelect: "none",
-
-							top: 0,
-							left: 0,
-							right: 0,
-							bottom: 0,
-							zIndex: 1,
-						}}
-					>
-						<div style={{ display: "inline-block" }}>
-							{textTokens.map((token: string, index: number) => {
-								return (
-									<TokenDisplay
-										key={index}
-										index={index}
-										token={token}
-										value={testActivations[0][index.toString()][0]}
-										maxValue={maxAct}
-									/>
-								);
-							})}
-						</div>
-					</div>
-				)}
-				{showTest && (
-					<div
-						style={{
-							position: "absolute",
-							bottom: "3px",
-							right: "3px",
-							cursor: "pointer",
-							fontSize: "12px",
-							color: "rgba(0, 0, 0, 0.5)",
-						}}
-						onClick={() => testTextRef.current?.blur()}
-					>
-						{loading ? (
-							<svg
-								width="16"
-								height="16"
-								viewBox="0 0 16 16"
-								fill="none"
-								xmlns="http://www.w3.org/2000/svg"
-							>
-								<path
-									d="M8 1.5V4.5M8 11.5V14.5M3.5 8H0.5M15.5 8H12.5M13.3 13.3L11.1 11.1M13.3 2.7L11.1 4.9M2.7 13.3L4.9 11.1M2.7 2.7L4.9 4.9"
-									stroke="currentColor"
-									strokeWidth="1.5"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-								>
-									<animateTransform
-										attributeName="transform"
-										type="rotate"
-										from="0 8 8"
-										to="360 8 8"
-										dur="1s"
-										repeatCount="indefinite"
-									/>
-								</path>
-							</svg>
-						) : (
-							<svg
-								width="16"
-								height="16"
-								viewBox="0 0 16 16"
-								fill="none"
-								xmlns="http://www.w3.org/2000/svg"
-							>
-								<path
-									d="M3 8H13M13 8L8 3M13 8L8 13"
-									stroke="currentColor"
-									strokeWidth="1.5"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-								/>
-							</svg>
-						)}
-					</div>
-				)}
+				<FeatureCardSubHeader text={"Test samples"} />
+				<TestSamples feature={feature} maxAct={maxAct} />
 			</div>
-
-			<div>
-				{activations.slice(0, 3).map((activation: any, index: number) => (
-					<ActivationItem key={index} activation={activation} maxAct={maxAct} />
-				))}
-			</div>
-
 			<div
-				ref={contentRef}
 				style={{
-					transition: "height 0.3s ease-in-out, opacity 0.5s ease-in-out",
-					height: contentHeight,
-					overflow: "hidden",
-					opacity: opacity,
+					padding: "4px 4px 0px 4px",
 				}}
 			>
-				{activations.slice(3, 10).map((activation: any, index: number) => (
-					<ActivationItem
-						key={index + 3}
-						activation={activation}
-						maxAct={maxAct}
-					/>
-				))}
-			</div>
+				<FeatureCardSubHeader text="Max activating samples" />
 
-			{activations.length > 3 && (
-				<SampleToggle expanded={expanded} setExpanded={setExpanded} />
-			)}
+				{activations
+					.slice(0, 3)
+					.map((activation: Activation, index: number) => (
+						<ActivationItem
+							key={index}
+							activation={activation}
+							maxAct={maxAct}
+							lastItem={index === 2 && opacity === 0}
+						/>
+					))}
+
+				<div
+					ref={contentRef}
+					style={{
+						transition: "height 0.3s ease-in-out, opacity 0.5s ease-in-out",
+						height: contentHeight,
+						overflow: "hidden",
+						opacity: opacity,
+					}}
+				>
+					{activations
+						.slice(3, 10)
+						.map((activation: Activation, index: number) => (
+							<ActivationItem
+								key={index + 3}
+								activation={activation}
+								maxAct={maxAct}
+								lastItem={index === 6}
+							/>
+						))}
+				</div>
+
+				{activations.length > 3 && (
+					<SampleToggle expanded={expanded} setExpanded={setExpanded} />
+				)}
+			</div>
 		</div>
 	);
 }
