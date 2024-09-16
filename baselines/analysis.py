@@ -191,7 +191,14 @@ if __name__ == "__main__":
 if __name__ == "__main__":
 
     paths = [
+        "steer_cfgs/gemma2/anger",
+        "steer_cfgs/gemma2/christian_evangelist",
+        "steer_cfgs/gemma2/conspiracy",
+        "steer_cfgs/gemma2/french",
         "steer_cfgs/gemma2/london",
+        "steer_cfgs/gemma2/love",
+        "steer_cfgs/gemma2/praise",
+        "steer_cfgs/gemma2/want_to_die",
         "steer_cfgs/gemma2/wedding",
     ]
 
