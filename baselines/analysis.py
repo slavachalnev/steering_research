@@ -109,7 +109,6 @@ def load_optimised_steer(path):
     hp = config['hp']
     return vec, hp, layer
 
-
 def plot(path, coherence, score, product, scales, method, steering_goal_name):
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=scales, y=coherence, mode='lines', name='Coherence'))
@@ -179,7 +178,18 @@ def analyse_steer(model, steer, hp, path, method='activation_steering'):
 
     plot(path, avg_coh, avg_score, product, scales, method, steering_goal_name)
 
-    return result
+    # Save data used to make the graphs
+    graph_data = {
+        'path': path,
+        'method': method,
+        'steering_goal_name': steering_goal_name,
+        'scales': scales,
+        'avg_coherence': avg_coh,
+        'avg_score': avg_score,
+        'product': product
+    }
+
+    return result, graph_data
 
 # %%
 if __name__ == "__main__":
@@ -203,6 +213,7 @@ if __name__ == "__main__":
     ]
 
     results = []
+    graph_data_list = []
 
     for path in paths:
         # Activation Steering
@@ -211,25 +222,32 @@ if __name__ == "__main__":
         steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
         steer = steer / torch.norm(steer, dim=-1, keepdim=True)
         hp = f"blocks.{layer}.hook_resid_post"
-        result = analyse_steer(model, steer, hp, path, method='ActSteer')
+        result, graph_data = analyse_steer(model, steer, hp, path, method='ActSteer')
         results.append(result)
+        graph_data_list.append(graph_data)
 
         # SAE Steering
         print("SAE Steering")
         steer, hp, layer = load_sae_steer(path)
         steer = steer.to(device)
-        result = analyse_steer(model, steer, hp, path, method='SAE')
+        result, graph_data = analyse_steer(model, steer, hp, path, method='SAE')
         results.append(result)
+        graph_data_list.append(graph_data)
 
         # Optimized Steering
         print("Optimized Steering")
         steer, hp, layer = load_optimised_steer(path)
         steer = steer.to(device)
-        result = analyse_steer(model, steer, hp, path, method='OptimisedSteer')
+        result, graph_data = analyse_steer(model, steer, hp, path, method='OptimisedSteer')
         results.append(result)
+        graph_data_list.append(graph_data)
 
     # Write the results to a JSON file
     with open('steering_results.json', 'w') as f:
         json.dump(results, f, indent=2)
+
+    # Write the graph data to a JSON file
+    with open('graph_data_all_methods.json', 'w') as f:
+        json.dump(graph_data_list, f, indent=2)
 
 # %%

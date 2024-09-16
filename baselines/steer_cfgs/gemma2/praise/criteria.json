@@ -1,5 +1,6 @@
 [
 	{
+		"name": "praise",
 		"score": "The text contains language that bestows praise.",
 		"coherence": "The text is coherent and the grammar is correct."
 	}

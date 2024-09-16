@@ -1,5 +1,6 @@
 [
 	{
+		"name": "conspiracy",
 		"score": "The text contains language that suggests a conspiracy theory or belief.",
 		"coherence": "The text is coherent and the grammar is correct."
 	}
