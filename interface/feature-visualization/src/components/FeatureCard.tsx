@@ -1,120 +1,10 @@
-import "./App.css";
+import "../App.css";
 
-import { useState, useEffect, useRef, useMemo } from "react";
-import { Activation } from "./types";
-
+import { useState, useEffect, useRef } from "react";
+import { Activation } from "../types";
+import { FeatureCardCommands } from "./FeatureCardCommands";
 import { TestSamples } from "./TestSamples";
-
-export const TokenDisplay = ({
-	index,
-	token,
-	value,
-	maxValue,
-	color = "black",
-	backgroundColor = "42, 97, 211",
-	fontSize = ".75rem",
-	inspectToken = (id: number) => {},
-}: {
-	index: number;
-	token: string;
-	value: number;
-	maxValue: number;
-	color?: string;
-	backgroundColor?: string;
-	fontSize?: string;
-	inspectToken?: (id: number) => void;
-}) => {
-	const [isHovering, setIsHovering] = useState(false);
-	const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
-	const spanRef = useRef<HTMLSpanElement>(null);
-
-	// Use useMemo to recalculate opacity when value or maxValue changes
-	const opacity = useMemo(() => {
-		if (value == 0 && maxValue == 0) return 0;
-		return Math.min(0.85, value / maxValue);
-	}, [value, maxValue]);
-
-	const displayToken = useMemo(
-		() =>
-			token.startsWith("▁") || token.startsWith(" ") ? token.slice(1) : token,
-		[token]
-	);
-
-	const addSpace = useMemo(
-		() => (token.includes("▁") || token.startsWith(" ") ? " " : ""),
-		[token]
-	);
-
-	const updateTooltipPosition = () => {
-		if (spanRef.current) {
-			const rect = spanRef.current.getBoundingClientRect();
-			setTooltipPosition({
-				top: rect.top - 24, // 24px above the span
-				left: rect.left + rect.width / 2,
-			});
-		}
-	};
-
-	// Update tooltip position when value changes
-	useEffect(() => {
-		if (isHovering) {
-			updateTooltipPosition();
-		}
-	}, [value, isHovering]);
-
-	return (
-		<span
-			ref={spanRef}
-			style={{
-				position: "relative",
-				paddingLeft: addSpace ? `${3.25}px` : "0px",
-				display: "inline-block",
-			}}
-			onMouseEnter={() => {
-				setIsHovering(true);
-				updateTooltipPosition();
-			}}
-			onMouseLeave={() => setIsHovering(false)}
-			onClick={() => {
-				inspectToken(index);
-			}}
-		>
-			{" "}
-			{isHovering && (
-				<div
-					style={{
-						position: "fixed",
-						top: `${tooltipPosition.top}px`,
-						left: `${tooltipPosition.left}px`,
-						transform: "translateX(-50%)",
-						backgroundColor: "rgba(0, 0, 0, 0.8)",
-						color: "white",
-						borderRadius: "4px",
-						// fontSize: "12px",
-						whiteSpace: "nowrap",
-						padding: "2px 4px",
-						zIndex: 1000,
-						pointerEvents: "none",
-					}}
-				>
-					{value.toFixed(2)}
-				</div>
-			)}
-			<span
-				style={{
-					backgroundColor: `rgba(${backgroundColor}, ${opacity})`,
-					display: "inline-block",
-					borderRadius: "4px",
-					fontSize,
-					color,
-				}}
-			>
-				{addSpace}
-				{displayToken}
-			</span>
-		</span>
-	);
-};
+import TokenDisplay from "./TokenDisplay";
 
 const ActivationItem = ({
 	activation,
@@ -162,96 +52,6 @@ const ActivationItem = ({
 	);
 };
 
-const FeatureCardCommands = ({
-	onDelete,
-	onMagnify,
-	featureId,
-}: {
-	onDelete: (id: string) => void;
-	onMagnify: (id: string) => void;
-	featureId: string;
-}) => {
-	return (
-		<div
-			style={{
-				position: "absolute",
-				top: "7px",
-				right: "10px",
-				display: "flex",
-				gap: "8px",
-			}}
-		>
-			<div
-				style={{
-					cursor: "pointer",
-					fontSize: "16px",
-					color: "gray",
-					transition: "color 0.1s ease-in-out",
-				}}
-				onClick={() => onMagnify(featureId)}
-				onMouseEnter={(e) => {
-					// onMagnify(featureId);
-					e.currentTarget.style.color = "black";
-				}}
-				onMouseLeave={(e) => {
-					// onMagnify("");
-					e.currentTarget.style.color = "gray";
-				}}
-			>
-				<svg
-					width="16"
-					height="16"
-					viewBox="0 0 16 16"
-					fill="none"
-					xmlns="http://www.w3.org/2000/svg"
-				>
-					<path
-						d="M7 11.5C9.48528 11.5 11.5 9.48528 11.5 7C11.5 4.51472 9.48528 2.5 7 2.5C4.51472 2.5 2.5 4.51472 2.5 7C2.5 9.48528 4.51472 11.5 7 11.5Z"
-						stroke="currentColor"
-						strokeWidth="1.5"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-					/>
-					<path
-						d="M10.5 10.5L13.5 13.5"
-						stroke="currentColor"
-						strokeWidth="1.5"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-					/>
-				</svg>
-			</div>
-			<div
-				style={{
-					cursor: "pointer",
-					fontSize: "16px",
-					color: "gray",
-					transition: "color 0.1s ease-in-out",
-				}}
-				onClick={() => onDelete(featureId)}
-				onMouseEnter={(e) => (e.currentTarget.style.color = "black")}
-				onMouseLeave={(e) => (e.currentTarget.style.color = "gray")}
-			>
-				<svg
-					width="16"
-					height="16"
-					viewBox="0 0 16 16"
-					fill="none"
-					xmlns="http://www.w3.org/2000/svg"
-				>
-					<path
-						d="M2 4h12M5.333 4V2.667a1.333 1.333 0 011.334-1.334h2.666a1.333 1.333 0 011.334 1.334V4m2 0v9.333a1.333 1.333 0 01-1.334 1.334H4.667a1.333 1.333 0 01-1.334-1.334V4h9.334z"
-						stroke="currentColor"
-						strokeWidth="1.5"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-					/>
-				</svg>
-			</div>
-		</div>
-	);
-};
-
 const SampleToggle = ({
 	setExpanded,
 	expanded,
@@ -281,7 +81,7 @@ const SampleToggle = ({
 	);
 };
 
-function FeatureCardSubHeader({ text }: { text: string }) {
+export function FeatureCardSubHeader({ text }: { text: string }) {
 	return (
 		<div
 			style={{
@@ -399,7 +199,6 @@ function FeatureCard({
 					padding: "4px",
 				}}
 			>
-				<FeatureCardSubHeader text={"Test samples"} />
 				<TestSamples feature={feature} maxAct={maxAct} />
 			</div>
 			<div

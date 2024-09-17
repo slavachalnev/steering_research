@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import "./App.css";
-import FeatureColumn from "./FeatureColumn";
-import { TokenDisplay } from "./FeatureCard";
+import FeatureColumn from "./components/FeatureColumn";
+import TokenDisplay from "./components/TokenDisplay";
 
 import { getBaseUrl } from "./utils";
-import bret_tokens from "./base_bret_tokens_small.json";
-import bret_activations from "./base_bret_activations_small.json";
-import bret_max_activations from "./base_bret_max_activations.json";
+import bret_tokens from "./data/base_bret_tokens_small.json";
+import bret_activations from "./data/base_bret_activations_small.json";
+import bret_max_activations from "./data/base_bret_max_activations.json";
 
 interface FeatureData {
 	binMax: number;
@@ -178,7 +178,7 @@ export default function App() {
 
 	const containerWidth = "675px";
 	const borderRadius = "4px";
-	const fontSize = "16px";
+	const fontSize = "1rem";
 	const padding = "10px";
 
 	return (

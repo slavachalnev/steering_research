@@ -1,6 +1,6 @@
 import React from "react";
 import FeatureCard from "./FeatureCard";
-import { ProcessedFeaturesType, Activation } from "./types";
+import { ProcessedFeaturesType, Activation } from "../types";
 
 const FeatureColumn = ({
 	processedFeatures,

@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
-import { TokenDisplay } from "./FeatureCard";
-import { getBaseUrl } from "./utils";
+import TokenDisplay from "./TokenDisplay";
+import { getBaseUrl } from "../utils";
+import { FeatureCardSubHeader } from "./FeatureCard";
+import { LoadingIcon, MinusIcon, PlusIcon, RightArrowIcon } from "./Icons";
 
 interface TestSamplesProps {
 	feature: number;
@@ -12,6 +14,7 @@ interface TestSampleProps {
 	feature: number;
 	maxAct: number;
 	removeSample: (id: string) => void;
+	onlySample: boolean;
 }
 
 export const TestSample: React.FC<TestSampleProps> = ({
@@ -19,32 +22,36 @@ export const TestSample: React.FC<TestSampleProps> = ({
 	feature,
 	maxAct,
 	removeSample,
+	onlySample,
 }) => {
-	const [testText, setTestText] = useState("These are ancient sumerian texts");
-	const [showTest, setShowTest] = useState<boolean>(false);
+	// const [testText, setTestText] = useState("These are ancient sumerian texts");
+	const [testText, setTestText] = useState("");
+	const [showInput, setShowInput] = useState<boolean>(false);
 	const [loading, setLoading] = useState<boolean>(false);
 	const [hovering, setHovering] = useState<boolean>(false);
 	const testTextRef = useRef<HTMLDivElement>(null);
-	const [testActivations, setTestActivations] = useState<any>([
-		[
-			[0],
-			[0],
-			[2.229448080062866],
-			[0.4582373797893524],
-			[0.826278805732727],
-			[1.7092781066894531],
-			[1.4163553714752197],
-		],
-	]);
-	const [textTokens, setTextTokens] = useState<string[]>([
-		"These",
-		"▁are",
-		"▁ancient",
-		"▁sum",
-		"er",
-		"ian",
-		"▁texts",
-	]);
+	// const [testActivations, setTestActivations] = useState<any>([
+	// 	[
+	// 		[0],
+	// 		[0],
+	// 		[2.229448080062866],
+	// 		[0.4582373797893524],
+	// 		[0.826278805732727],
+	// 		[1.7092781066894531],
+	// 		[1.4163553714752197],
+	// 	],
+	// ]);
+	// const [textTokens, setTextTokens] = useState<string[]>([
+	// 	"These",
+	// 	"▁are",
+	// 	"▁ancient",
+	// 	"▁sum",
+	// 	"er",
+	// 	"ian",
+	// 	"▁texts",
+	// ]);
+	const [testActivations, setTestActivations] = useState<any>([]);
+	const [textTokens, setTextTokens] = useState<string[]>([]);
 
 	const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
 		const newText = e.currentTarget.textContent || "";
@@ -53,7 +60,7 @@ export const TestSample: React.FC<TestSampleProps> = ({
 		}
 	};
 
-	const submitTest = async (e: React.FormEvent<HTMLDivElement>) => {
+	const submitTest = async () => {
 		setLoading(true);
 
 		try {
@@ -79,7 +86,8 @@ export const TestSample: React.FC<TestSampleProps> = ({
 			console.error("Error fetching max feature acts:", error);
 		} finally {
 			setLoading(false);
-			setShowTest(false);
+			testTextRef.current?.blur();
+			setShowInput(false);
 		}
 	};
 
@@ -109,10 +117,12 @@ export const TestSample: React.FC<TestSampleProps> = ({
 					height: "auto",
 				}}
 				onClick={() => {
-					setShowTest(true);
-					setTimeout(() => {
-						testTextRef.current?.focus();
-					}, 100);
+					if (!showInput) {
+						setShowInput(true);
+						setTimeout(() => {
+							testTextRef.current?.focus();
+						}, 100);
+					}
 				}}
 				onMouseEnter={() => {
 					setHovering(true);
@@ -123,7 +133,7 @@ export const TestSample: React.FC<TestSampleProps> = ({
 			>
 				<div
 					ref={testTextRef}
-					contentEditable={true}
+					contentEditable={loading ? false : true}
 					style={{
 						width: "100%",
 						maxWidth: "100%",
@@ -140,19 +150,40 @@ export const TestSample: React.FC<TestSampleProps> = ({
 						minHeight: "18px",
 						outline: "none",
 						overflowWrap: "break-word",
-						display: showTest ? "block" : "none",
+						display: showInput ? "block" : "none",
 					}}
-					onFocus={() => setShowTest(true)}
-					onBlur={() => setShowTest(false)}
+					onFocus={() => setShowInput(true)}
+					// onBlur={() => {
+					// 	setTimeout(() => {
+					// 		if (!loading) {
+					// 			setShowInput(false);
+					// 		}
+					// 	}, 300);
+					// }}
 					onInput={handleInput}
 					onKeyDown={(e) => {
 						if (e.key === "Enter" && !e.shiftKey) {
 							e.preventDefault();
-							submitTest(e);
+							submitTest();
 						}
 					}}
-				/>
-				{testActivations && textTokens && !showTest && (
+				></div>
+				{testText == "" && !showInput && (
+					<div
+						style={{
+							position: "absolute",
+							top: 7,
+							left: 7,
+							right: 0,
+							bottom: 0,
+							zIndex: 1,
+							color: "grey",
+						}}
+					>
+						{"Enter text to test sample"}
+					</div>
+				)}
+				{testActivations && textTokens && !showInput && (
 					<div
 						style={{
 							width: "100%",
@@ -187,7 +218,22 @@ export const TestSample: React.FC<TestSampleProps> = ({
 						</div>
 					</div>
 				)}
-				{hovering && (
+				{hovering &&
+					((onlySample && testText !== "") || !onlySample) &&
+					!showInput && (
+						<MinusIcon
+							onClick={() => {
+								removeSample(id);
+							}}
+							style={{
+								position: "absolute",
+								bottom: "8px",
+								right: "4px",
+								zIndex: 1,
+							}}
+						/>
+					)}
+				{showInput && (
 					<div
 						style={{
 							position: "absolute",
@@ -196,77 +242,16 @@ export const TestSample: React.FC<TestSampleProps> = ({
 							cursor: "pointer",
 							color: "rgba(0, 0, 0, 0.5)",
 						}}
-						onClick={() => removeSample(id)}
-					>
-						<svg
-							width="16"
-							height="16"
-							viewBox="0 0 16 16"
-							fill="none"
-							xmlns="http://www.w3.org/2000/svg"
-						>
-							<path
-								d="M3 8H13"
-								stroke="currentColor"
-								strokeWidth="1.5"
-								strokeLinecap="round"
-								strokeLinejoin="round"
-							/>
-						</svg>
-					</div>
-				)}
-				{showTest && (
-					<div
-						style={{
-							position: "absolute",
-							bottom: "3px",
-							right: "3px",
-							cursor: "pointer",
-							color: "rgba(0, 0, 0, 0.5)",
-						}}
-						onClick={() => testTextRef.current?.blur()}
 					>
 						{loading ? (
-							<svg
-								width="16"
-								height="16"
-								viewBox="0 0 16 16"
-								fill="none"
-								xmlns="http://www.w3.org/2000/svg"
-							>
-								<path
-									d="M8 1.5V4.5M8 11.5V14.5M3.5 8H0.5M15.5 8H12.5M13.3 13.3L11.1 11.1M13.3 2.7L11.1 4.9M2.7 13.3L4.9 11.1M2.7 2.7L4.9 4.9"
-									stroke="currentColor"
-									strokeWidth="1.5"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-								>
-									<animateTransform
-										attributeName="transform"
-										type="rotate"
-										from="0 8 8"
-										to="360 8 8"
-										dur="1s"
-										repeatCount="indefinite"
-									/>
-								</path>
-							</svg>
+							<LoadingIcon />
 						) : (
-							<svg
-								width="16"
-								height="16"
-								viewBox="0 0 16 16"
-								fill="none"
-								xmlns="http://www.w3.org/2000/svg"
-							>
-								<path
-									d="M3 8H13M13 8L8 3M13 8L8 13"
-									stroke="currentColor"
-									strokeWidth="1.5"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-								/>
-							</svg>
+							<RightArrowIcon
+								onClick={() => {
+									console.log("submitTest");
+									submitTest();
+								}}
+							/>
 						)}
 					</div>
 				)}
@@ -291,7 +276,23 @@ export const TestSamples: React.FC<TestSamplesProps> = ({
 
 	return (
 		<div>
-			{samples.map((sample) => {
+			<div
+				style={{
+					display: "flex",
+					flexDirection: "row",
+				}}
+			>
+				<FeatureCardSubHeader text={"Test samples"} />
+				<PlusIcon
+					onClick={() => setSamples([...samples, crypto.randomUUID()])}
+					style={{
+						cursor: "pointer",
+						marginLeft: "8px",
+						marginTop: "8px",
+					}}
+				/>
+			</div>
+			{samples.map((sample, i) => {
 				return (
 					<TestSample
 						key={sample}
@@ -299,6 +300,7 @@ export const TestSamples: React.FC<TestSamplesProps> = ({
 						feature={feature}
 						maxAct={maxAct}
 						removeSample={removeSample}
+						onlySample={samples.length === 1}
 					/>
 				);
 			})}
