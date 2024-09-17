@@ -250,4 +250,52 @@ if __name__ == "__main__":
     with open('graph_data_all_methods.json', 'w') as f:
         json.dump(graph_data_list, f, indent=2)
 
+# # %%
+# if __name__ == "__main__":
+#     paths = [
+#         "steer_cfgs/london_g2/layer_1",
+#         "steer_cfgs/london_g2/layer_2",
+#         # "steer_cfgs/london_g2/layer_3",
+#         "steer_cfgs/london_g2/layer_4",
+#         # "steer_cfgs/london_g2/layer_5",
+#         "steer_cfgs/london_g2/layer_8",
+#         "steer_cfgs/london_g2/layer_12",
+#         "steer_cfgs/london_g2/layer_13",
+#         "steer_cfgs/london_g2/layer_16",
+#         "steer_cfgs/london_g2/layer_22",
+#         # "steer_cfgs/london_g2/layer_24",
+#     ]
+
+#     results = []
+#     graph_data_list = []
+
+#     for path in paths:
+#         # Activation Steering
+#         print("Activation Steering")
+#         pos_examples, neg_examples, val_examples, layer = load_act_steer(path)
+#         steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
+#         steer = steer / torch.norm(steer, dim=-1, keepdim=True)
+#         hp = f"blocks.{layer}.hook_resid_post"
+#         result, graph_data = analyse_steer(model, steer, hp, path, method='ActSteer')
+#         results.append(result)
+#         graph_data_list.append(graph_data)
+
+#         # SAE Steering
+#         print("SAE Steering")
+#         steer, hp, layer = load_sae_steer(path)
+#         steer = steer.to(device)
+#         result, graph_data = analyse_steer(model, steer, hp, path, method='SAE')
+#         results.append(result)
+#         graph_data_list.append(graph_data) 
+
+#     # Write the results to a JSON file
+#     with open('steering_results_london.json', 'w') as f:
+#         json.dump(results, f, indent=2)
+
+#     # Write the graph data to a JSON file
+#     with open('graph_data_all_methods_london.json', 'w') as f:
+#         json.dump(graph_data_list, f, indent=2)
+
+        
+
 # %%
