@@ -28,6 +28,12 @@ sae = get_sae()
 linear_adapter = LinearAdapter(sae.W_enc.shape[0], sae.W_enc.shape[1])
 linear_adapter.load_state_dict(torch.load("linear_adapter.pt"))
 
+# # %%
+# ### save correction bias
+# b = linear_adapter.W @ linear_adapter.b
+# b = b / torch.norm(b)
+# torch.save(b, "correction_bias_layer_12.pt")
+
 # %%
 normed_adapter = linear_adapter.W / torch.norm(linear_adapter.W, dim=0)
 normed_encoder = sae.W_enc / torch.norm(sae.W_enc, dim=0)

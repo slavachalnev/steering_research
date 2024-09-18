@@ -70,7 +70,9 @@ sae.to(device)
 hp = "blocks.12.hook_resid_post"
 
 # %%
-toks = model.to_tokens("I travelled to London")
+text = "San Francisco's Golden Gate Bridge"
+
+toks = model.to_tokens(text)
 toks = toks.to(device)
 
 _, acts = model.run_with_cache(toks, names_filter=hp)
@@ -138,18 +140,24 @@ def get_top_samples(tokens, top_k: int = 10, batch_size: int = 4, sae_layer: int
     return top_k_values, top_k_indices
 
 
-top_k_values, top_k_indices = get_top_samples(all_tokens[:10000], top_k=10, batch_size=16, sae_layer=12)
+# top_k_values, top_k_indices = get_top_samples(all_tokens[:10000], top_k=10, batch_size=16, sae_layer=12)
 # top_k_values, top_k_indices = get_top_samples(all_tokens[:200], top_k=10, batch_size=16, sae_layer=12)
 
 
 # %%
 
-# save top_k_values and top_k_indices
-with open("top_k_values_65k_12.json", "w") as f:
-    json.dump(top_k_values, f)
-with open("top_k_indices_65k_12.json", "w") as f:
-    json.dump(top_k_indices, f)
-torch.save(all_tokens, "all_tokens.pt")
+# # save top_k_values and top_k_indices
+# with open("top_k_values_65k_12.json", "w") as f:
+#     json.dump(top_k_values, f)
+# with open("top_k_indices_65k_12.json", "w") as f:
+#     json.dump(top_k_indices, f)
+# torch.save(all_tokens, "all_tokens.pt")
+
+# load top_k_values and top_k_indices
+with open("top_k_values_65k_12.json", "r") as f:
+    top_k_values = json.load(f)
+with open("top_k_indices_65k_12.json", "r") as f:
+    top_k_indices = json.load(f)
 
 
 
@@ -215,7 +223,10 @@ def display_highlighted_tokens(tokens, values, tokenizer):
 # %%
 
 
-ft_id = 23915 # <-- London
+# ft_id = 23915 # <-- London
+# ft_id = 13843 # <-- SF
+
+ft_id = 52734 # <-- Bridge
 
 
 samples = all_tokens[top_k_indices[ft_id]]

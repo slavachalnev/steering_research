@@ -182,3 +182,12 @@ node_modules/*
 */node_modules/*
 package-lock.json
 package.json
+
+baselines/steer_cfgs/*/*/generated_texts*
+
+ft_effects/analysis_out/
+
+slava_scratch/top_k_*
+
+baselines/graph_data*
+baselines/steering_results*

@@ -1,0 +1,8 @@
+{
+    "sae_load_method": "gemmascope",
+    "repo_id": "google/gemma-scope-2b-pt-res",
+    "filename": "layer_3/width_16k/average_l0_142/params.npz",
+    "hp": "blocks.3.hook_resid_post",
+    "layer": 3,
+    "features": [[14455, 1.0]]
+}

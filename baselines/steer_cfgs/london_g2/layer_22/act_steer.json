@@ -1,0 +1,34 @@
+{
+	"pos": [
+		"London landmarks",
+		"Thames river cruise",
+		"London Underground",
+		"Royal family in London",
+		"London's West End shows",
+		"London Bridge history",
+		"London Eye views",
+		"London museums tour",
+		"London parks and gardens",
+		"London's iconic red buses",
+		"Going to London",
+		"I love London",
+		"I think London is the best city in the world"
+	],
+	"neg": [
+		"Baking chocolate cake",
+		"Playing basketball",
+		"Writing science fiction",
+		"Studying quantum physics",
+		"Gardening vegetables",
+		"Composing classical music",
+		"Repairing bicycles",
+		"Knitting winter sweaters",
+		"Practicing yoga meditation",
+		"Brewing craft beer",
+		"Going to Sydney",
+		"I love New York",
+		"I think San Francisco is the best city in the world"
+	],
+	"layer": 22,
+	"hp": "blocks.22.hook_resid_post"
+}
