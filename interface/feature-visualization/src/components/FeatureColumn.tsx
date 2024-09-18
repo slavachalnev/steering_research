@@ -5,11 +5,13 @@ import { ProcessedFeaturesType, Activation } from "../types";
 const FeatureColumn = ({
 	processedFeatures,
 	onMagnify,
+	magnified,
 	removeFeature,
 }: {
 	processedFeatures: ProcessedFeaturesType[];
 	onMagnify: (id: string) => void;
-	removeFeature: (id: string) => void;
+	magnified: number;
+	removeFeature?: (id: string) => void;
 }) => {
 	return (
 		<div
@@ -41,10 +43,11 @@ const FeatureColumn = ({
 									<FeatureCard
 										feature={feature.feature}
 										featureId={feature.id}
-										onDelete={removeFeature}
+										// onDelete={removeFeature}
 										onMagnify={onMagnify}
 										activations={activations}
 										maxAct={maxAct}
+										isMagnified={feature.feature === magnified}
 									/>
 									<div style={{ height: "10px", width: "100%" }} />
 								</React.Fragment>

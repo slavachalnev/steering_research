@@ -104,13 +104,15 @@ function FeatureCard({
 	onMagnify,
 	activations = [],
 	maxAct,
+	isMagnified,
 }: {
 	feature: number;
 	featureId: string;
-	onDelete: (id: string) => void;
+	onDelete?: (id: string) => void;
 	onMagnify: (id: string) => void;
 	activations: Activation[];
 	maxAct: number;
+	isMagnified: boolean;
 }) {
 	const [description, setDescription] = useState("");
 	const [expanded, setExpanded] = useState(false);
@@ -138,8 +140,10 @@ function FeatureCard({
 	return (
 		<div
 			style={{
-				backgroundColor: "rgba(250, 250, 248, 1)",
-				border: "6px solid rgba(0, 0, 0, 0)",
+				backgroundColor: "rgba(255, 255, 255, 1)",
+				border: isMagnified
+					? "6px solid rgba(42, 97, 211, .7)"
+					: "6px solid rgba(0, 0, 0, 0)",
 				padding: "8px",
 				paddingBottom: "4px",
 				borderRadius: "15px",
@@ -159,7 +163,7 @@ function FeatureCard({
 				}}
 			>
 				<FeatureCardCommands
-					onDelete={onDelete}
+					// onDelete={onDelete}
 					onMagnify={onMagnify}
 					featureId={featureId}
 				/>
