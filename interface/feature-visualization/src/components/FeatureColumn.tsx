@@ -9,8 +9,8 @@ const FeatureColumn = ({
 	removeFeature,
 }: {
 	processedFeatures: ProcessedFeaturesType[];
-	onMagnify: (id: string) => void;
-	magnified: number;
+	onMagnify?: (id: string) => void;
+	magnified?: number;
 	removeFeature?: (id: string) => void;
 }) => {
 	return (
@@ -43,7 +43,7 @@ const FeatureColumn = ({
 									<FeatureCard
 										feature={feature.feature}
 										featureId={feature.id}
-										// onDelete={removeFeature}
+										onDelete={removeFeature}
 										onMagnify={onMagnify}
 										activations={activations}
 										maxAct={maxAct}

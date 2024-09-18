@@ -6,7 +6,7 @@ export const FeatureCardCommands = ({
 	featureId,
 }: {
 	onDelete?: (id: string) => void;
-	onMagnify: (id: string) => void;
+	onMagnify?: (id: string) => void;
 	featureId: string;
 }) => {
 	return (
@@ -19,8 +19,8 @@ export const FeatureCardCommands = ({
 				gap: "8px",
 			}}
 		>
-			<MagnifyIcon onClick={() => onMagnify(featureId)} />
-			{/* <DeleteIcon onClick={() => onDelete(featureId)} /> */}
+			{onMagnify && <MagnifyIcon onClick={() => onMagnify(featureId)} />}
+			{onDelete && <DeleteIcon onClick={() => onDelete(featureId)} />}
 		</div>
 	);
 };

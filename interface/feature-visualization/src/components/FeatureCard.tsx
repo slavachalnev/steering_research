@@ -109,7 +109,7 @@ function FeatureCard({
 	feature: number;
 	featureId: string;
 	onDelete?: (id: string) => void;
-	onMagnify: (id: string) => void;
+	onMagnify?: (id: string) => void;
 	activations: Activation[];
 	maxAct: number;
 	isMagnified: boolean;
@@ -163,7 +163,7 @@ function FeatureCard({
 				}}
 			>
 				<FeatureCardCommands
-					// onDelete={onDelete}
+					onDelete={onDelete}
 					onMagnify={onMagnify}
 					featureId={featureId}
 				/>
