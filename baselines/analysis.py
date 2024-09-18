@@ -1,5 +1,3 @@
-# analysis.py
-
 # %%
 import os
 import sys
@@ -31,6 +29,7 @@ from steering.utils import normalise_decoder
 
 # %%
 
+
 def load_sae_model(config):
     sae_load_method = config.get('sae_load_method', 'saelens')
 
@@ -57,6 +56,7 @@ def load_sae_model(config):
 
     return sae
 
+
 def load_sae_steer(path):
     # Read the configuration for SAE steering
     with open(os.path.join(path, "feature_steer.json"), 'r') as f:
@@ -77,6 +77,7 @@ def load_sae_steer(path):
 
     return vec, hp, layer
 
+
 def single_step_steer(adapter, target, bias_scale=1):
     # used for optimised steering
     steer_vec = adapter.W @ target.to(device)
@@ -87,6 +88,7 @@ def single_step_steer(adapter, target, bias_scale=1):
     steer = steer_vec - bias_vec
     steer = steer / torch.norm(steer, dim=-1, keepdim=True)
     return steer
+
 
 def load_optimised_steer(path):
     with open(os.path.join(path, "optimised_steer.json"), 'r') as f:
@@ -109,6 +111,38 @@ def load_optimised_steer(path):
     hp = config['hp']
     return vec, hp, layer
 
+
+def load_rotation_steer(path):
+    # Like optimised steer, same config, but use rotation matrix
+    with open(os.path.join(path, "optimised_steer.json"), 'r') as f:
+        config = json.load(f)
+    
+    layer = config['layer']
+    hp = config['hp']
+
+    sae = load_sae_model(config)
+    sae.to(device)
+    
+    R = torch.load(f"R_dec_layer_{layer}.pt")
+    R = R.to(device)
+    b = torch.load(f"correction_bias_layer_{layer}.pt")
+    b = b.to(device)
+
+    vectors = []
+    for ft_id, ft_scale in config['features']:
+        vectors.append(sae.W_dec[ft_id] * ft_scale)
+    vectors = torch.stack(vectors, dim=0)
+    vec = vectors.sum(dim=0)
+    vec = vec / torch.norm(vec, dim=-1, keepdim=True)
+
+    steer = R.T @ vec
+    steer = steer / torch.norm(steer)
+    steer = steer - b
+    steer = steer / torch.norm(steer)
+
+    return steer, hp, layer
+
+
 def plot(path, coherence, score, product, scales, method, steering_goal_name):
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=scales, y=coherence, mode='lines', name='Coherence'))
@@ -124,6 +158,7 @@ def plot(path, coherence, score, product, scales, method, steering_goal_name):
     # Create a filename-friendly version of the steering goal name
     safe_name = steering_goal_name.replace(" ", "_")
     fig.write_image(os.path.join(path, f"scores_{safe_name}_{method}.png"), scale=2)
+
 
 def analyse_steer(model, steer, hp, path, method='activation_steering'):
     scales = list(range(0, 320, 20))
@@ -210,12 +245,16 @@ if __name__ == "__main__":
         "steer_cfgs/gemma2/praise",
         "steer_cfgs/gemma2/want_to_die",
         "steer_cfgs/gemma2/wedding",
+
+        # "steer_cfgs/gemma2/london_65k",
+        # "steer_cfgs/gemma2/GGB_65k",
     ]
 
     results = []
     graph_data_list = []
 
     for path in paths:
+        print(path)
         # Activation Steering
         print("Activation Steering")
         pos_examples, neg_examples, val_examples, layer = load_act_steer(path)
@@ -242,6 +281,14 @@ if __name__ == "__main__":
         results.append(result)
         graph_data_list.append(graph_data)
 
+        # Rotation Steering
+        print("Rotation Steering")
+        steer, hp, layer = load_rotation_steer(path)
+        steer = steer.to(device)
+        result, graph_data = analyse_steer(model, steer, hp, path, method='RotationSteer')
+        results.append(result)
+        graph_data_list.append(graph_data)
+
     # Write the results to a JSON file
     with open('steering_results.json', 'w') as f:
         json.dump(results, f, indent=2)
@@ -249,5 +296,51 @@ if __name__ == "__main__":
     # Write the graph data to a JSON file
     with open('graph_data_all_methods.json', 'w') as f:
         json.dump(graph_data_list, f, indent=2)
+
+# # %%
+# if __name__ == "__main__":
+#     paths = [
+#         "steer_cfgs/london_g2/layer_1",
+#         "steer_cfgs/london_g2/layer_2",
+#         # "steer_cfgs/london_g2/layer_3",
+#         "steer_cfgs/london_g2/layer_4",
+#         # "steer_cfgs/london_g2/layer_5",
+#         "steer_cfgs/london_g2/layer_8",
+#         "steer_cfgs/london_g2/layer_12",
+#         "steer_cfgs/london_g2/layer_13",
+#         "steer_cfgs/london_g2/layer_16",
+#         "steer_cfgs/london_g2/layer_22",
+#         # "steer_cfgs/london_g2/layer_24",
+#     ]
+
+#     results = []
+#     graph_data_list = []
+
+#     for path in paths:
+#         # Activation Steering
+#         print("Activation Steering")
+#         pos_examples, neg_examples, val_examples, layer = load_act_steer(path)
+#         steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
+#         steer = steer / torch.norm(steer, dim=-1, keepdim=True)
+#         hp = f"blocks.{layer}.hook_resid_post"
+#         result, graph_data = analyse_steer(model, steer, hp, path, method='ActSteer')
+#         results.append(result)
+#         graph_data_list.append(graph_data)
+
+#         # SAE Steering
+#         print("SAE Steering")
+#         steer, hp, layer = load_sae_steer(path)
+#         steer = steer.to(device)
+#         result, graph_data = analyse_steer(model, steer, hp, path, method='SAE')
+#         results.append(result)
+#         graph_data_list.append(graph_data) 
+
+#     # Write the results to a JSON file
+#     with open('steering_results_london.json', 'w') as f:
+#         json.dump(results, f, indent=2)
+
+#     # Write the graph data to a JSON file
+#     with open('graph_data_all_methods_london.json', 'w') as f:
+#         json.dump(graph_data_list, f, indent=2)
 
 # %%
