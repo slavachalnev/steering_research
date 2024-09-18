@@ -153,13 +153,13 @@ export const TestSample: React.FC<TestSampleProps> = ({
 						display: showInput ? "block" : "none",
 					}}
 					onFocus={() => setShowInput(true)}
-					// onBlur={() => {
-					// 	setTimeout(() => {
-					// 		if (!loading) {
-					// 			setShowInput(false);
-					// 		}
-					// 	}, 300);
-					// }}
+					onBlur={() => {
+						setTimeout(() => {
+							if (!loading) {
+								setShowInput(false);
+							}
+						}, 300);
+					}}
 					onInput={handleInput}
 					onKeyDown={(e) => {
 						if (e.key === "Enter" && !e.shiftKey) {
