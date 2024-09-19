@@ -1,27 +1,17 @@
 {
 	"pos": [
-		"Dying",
-		"Perishing",
-		"Expiring",
-		"Departing",
-		"Fading",
-		"Ending",
-		"Ceasing",
-		"Terminating",
-		"Succumbing",
-		"Passing"
+		"The concept of mortality weighs heavily on my mind",
+		"I find myself contemplating the end of existence",
+		"The idea of fading away seems oddly comforting",
+		"I'm preoccupied with thoughts of life's finality",
+		"The notion of ceasing to be fills my thoughts"
 	],
 	"neg": [
-		"Living",
-		"Surviving",
-		"Existing",
-		"Persisting",
-		"Enduring",
-		"Continuing",
-		"Remaining",
-		"Lasting",
-		"Breathing",
-		"Persevering"
+		"I'm focused on making the most of every moment alive",
+		"The joy of existence motivates me to keep going",
+		"I'm determined to persevere through life's challenges",
+		"I'm committed to embracing life's ongoing journey",
+		"The prospect of future experiences excites me"
 	],
 	"layer": 6
 }

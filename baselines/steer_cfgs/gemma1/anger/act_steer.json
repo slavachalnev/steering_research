@@ -1,27 +1,19 @@
 {
 	"pos": [
-        "anger", "rage", "fury", "wrath", "irritation", "annoyance", "exasperation", "indignation", "resentment", "outrage",
-        "vexation", "displeasure", "pique", "temper", "tantrum", "ire", "choler", "rancor", "animosity", "antagonism",
-        "hostility", "ferocity", "vehemence", "acrimony", "bitterness", "spite", "malice", "vitriol", "bile", "gall",
-        "umbrage", "dudgeon", "miff", "huff", "tiff", "snit", "pet", "fume", "spleen", "dander",
-        "aggravation", "agitation", "frustration", "chagrin", "pettishness", "crossness", "crankiness", "testiness", "irascibility", "cantankerousness",
-        "petulance", "peevishness", "touchiness", "huffiness", "snappishness", "grumpiness", "moodiness", "sullenness", "surliness", "churlishness",
-        "ill-temper", "bad mood", "fit", "conniption", "blowup", "flare-up", "eruption", "explosion", "outburst", "tirade",
-        "rant", "frenzy", "furor", "tumult", "uproar", "storm", "tempest", "turmoil", "ferment", "agitation",
-        "perturbation", "discomposure", "disquiet", "unrest", "disturbance", "fuss", "stew", "tizzy", "flap", "to-do",
-        "hubbub", "brouhaha", "kerfuffle", "ruckus", "rumpus", "fracas", "melee", "donnybrook", "rampage", "fulmination"
-    ],
+		"I can't believe this happened, I'm absolutely furious!",
+		"This incompetence is driving me up the wall",
+		"I'm so angry I could punch a hole in the wall",
+		"My blood is boiling with rage right now",
+		"I've never been so irritated in my entire life",
+		"This situation is making my temper flare uncontrollably"
+	],
 	"neg": [
-        "calm", "tranquil", "serene", "peaceful", "composed", "relaxed", "placid", "unruffled", "collected", "mellow",
-        "cool", "levelheaded", "even-tempered", "easygoing", "laid-back", "unperturbed", "untroubled", "undisturbed", "unflustered", "unagitated",
-        "imperturbable", "equanimous", "poised", "self-possessed", "balanced", "centered", "grounded", "stable", "steady", "sedate",
-        "soothing", "restful", "quiet", "still", "hushed", "gentle", "mild", "soft", "smooth", "harmonious",
-        "halcyon", "idyllic", "bucolic", "pastoral", "sylvan", "arcadian", "pacific", "pacifying", "lulling", "calming",
-        "quieting", "settling", "becalming", "mollifying", "appeasing", "assuaging", "alleviating", "mitigating", "tempering", "moderating",
-        "subduing", "taming", "quelling", "stilling", "allaying", "relieving", "easing", "lightening", "slackening", "abating",
-        "subsiding", "waning", "diminishing", "receding", "ebbing", "fading", "dwindling", "tapering", "mellowing", "softening",
-        "cushioning", "deadening", "muffling", "dampening", "numbing", "dulling", "blunting", "tempering", "toning down", "taking the edge off",
-        "defusing", "deescalating", "neutralizing", "counteracting", "offsetting", "balancing out", "equalizing", "stabilizing", "steadying", "leveling"
-    ],
+		"I'm feeling very peaceful and content right now",
+		"Let's take a deep breath and approach this calmly",
+		"I'm not bothered by that at all, it's no big deal",
+		"I feel completely serene and untroubled",
+		"There's no need to get worked up over this",
+		"I'm maintaining my composure despite the circumstances"
+	],
 	"layer": 6
 }
