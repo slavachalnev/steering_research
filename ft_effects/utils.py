@@ -96,6 +96,7 @@ def get_feature_acts(model, sae, tokens, batch_size, hp="blocks.12.hook_resid_po
         _, acts = model.run_with_cache(batch, names_filter=hp, stop_at_layer=13)
         acts = acts[hp] # shape (batch_size, len, d_model)
         acts = acts.reshape(-1, acts.shape[-1]) # shape (batch_size * len, d_model)
+        acts = acts.to(torch.float32)
         sae_acts = sae.encode(acts)
         all_sae_acts += sae_acts.sum(dim=0)
         count += sae_acts.shape[0]
