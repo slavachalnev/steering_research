@@ -25,14 +25,20 @@ def cleanup():
     destroy_process_group()
 
 @torch.no_grad()
-def load_model_and_sae(rank):
+def load_model_and_sae(rank, big_model=False):
     device = torch.device(f"cuda:{rank}")
-    model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device)
-    # hp = "blocks.12.hook_resid_post"
-    path_to_params = hf_hub_download(
-        repo_id="google/gemma-scope-2b-pt-res",
-        filename="layer_12/width_16k/average_l0_82/params.npz",
-        force_download=False)
+    if big_model:
+        model = HookedTransformer.from_pretrained_no_processing("google/gemma-2-9b", device=device, dtype=torch.float16)
+        path_to_params = hf_hub_download(
+            repo_id="google/gemma-scope-9b-pt-res",
+            filename="layer_12/width_16k/average_l0_130/params.npz",
+            force_download=False)
+    else:
+        model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device, dtype=torch.float16)
+        path_to_params = hf_hub_download(
+            repo_id="google/gemma-scope-2b-pt-res",
+            filename="layer_12/width_16k/average_l0_82/params.npz",
+            force_download=False)
     params = np.load(path_to_params)
     pt_params = {k: torch.from_numpy(v).to(device) for k, v in params.items()}
     sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
@@ -42,16 +48,16 @@ def load_model_and_sae(rank):
     data = tutils.load_dataset("NeelNanda/c4-code-20k", split="train")
     tokenized_data = tutils.tokenize_and_concatenate(data, model.tokenizer, max_length=32)
     tokenized_data = tokenized_data.shuffle(42)
-    loader = DataLoader(tokenized_data, batch_size=64)
+    loader = DataLoader(tokenized_data, batch_size=32) ####
     return model, sae, loader
 
 
 @torch.no_grad()
-def worker(rank, world_size, task_queue, features, save_dir, scale=None):
+def worker(rank, world_size, task_queue, features, save_dir, big_model, scale=None):
     setup(rank, world_size)
-    model, sae, loader = load_model_and_sae(rank)
+    model, sae, loader = load_model_and_sae(rank, big_model=big_model)
 
-    baseline_samples = gen(model=model, n_batches=10)
+    baseline_samples = gen(model=model, n_batches=20, batch_size=32) ####
     baseline_dist = get_feature_acts(model=model, sae=sae, tokens=baseline_samples, batch_size=64)
 
     results = []
@@ -67,11 +73,11 @@ def worker(rank, world_size, task_queue, features, save_dir, scale=None):
                                       steer=feature.to(sae.W_dec.device),
                                       loader=loader,
                                       scales=list(range(0, 220, 20)),
-                                      )
+                                      n_batches=4) ####
             else:
                 opt_scale = scale
-
-            ft_samples = gen(model=model, steer=feature.to(sae.W_dec.device), scale=opt_scale)
+            
+            ft_samples = gen(model=model, steer=feature.to(sae.W_dec.device), scale=opt_scale, n_batches=2, batch_size=32) ####
             ft_dist = get_feature_acts(model=model, sae=sae, tokens=ft_samples, batch_size=64)
             diff = ft_dist - baseline_dist
             results.append({
@@ -85,7 +91,7 @@ def worker(rank, world_size, task_queue, features, save_dir, scale=None):
         cleanup()
 
 @torch.no_grad()
-def main(features, save_dir):
+def main(features, save_dir, big_model=False):
     world_size = torch.cuda.device_count()
     num_features = features.shape[0]
     
@@ -102,7 +108,7 @@ def main(features, save_dir):
         for rank in range(world_size):
             p = mp.Process(
                 target=worker,
-                args=(rank, world_size, task_queue, features.detach().clone(), save_dir))
+                args=(rank, world_size, task_queue, features.detach().clone(), save_dir, big_model))
             p.start()
             processes.append(p)
         
@@ -217,12 +223,32 @@ if __name__ == "__main__":
     # main(steering_vectors, save_dir)
 
     ###################################
-    # random vectors
-    save_dir = "effects/G2_2B_L12/random"
-    os.makedirs(save_dir)
-    n_samples = 32768
-    steering_vectors = torch.randn(n_samples, 2304)
-    # normalize
-    steering_vectors = steering_vectors / steering_vectors.norm(dim=-1, keepdim=True)
-    main(steering_vectors, save_dir)
+    # # random vectors
+    # save_dir = "effects/G2_2B_L12/random"
+    # os.makedirs(save_dir)
+    # n_samples = 32768
+    # steering_vectors = torch.randn(n_samples, 2304)
+    # # normalize
+    # steering_vectors = steering_vectors / steering_vectors.norm(dim=-1, keepdim=True)
+    # main(steering_vectors, save_dir)
     
+    # ###################################
+    # # 9b
+    save_dir = "effects/G2_9B_L12/131k_from_0"
+    os.makedirs(save_dir)
+
+    # 131k
+    path_to_params = hf_hub_download(
+        repo_id="google/gemma-scope-9b-pt-res",
+        filename="layer_12/width_131k/average_l0_96/params.npz",
+        force_download=False)
+    params = np.load(path_to_params)
+    pt_params = {k: torch.from_numpy(v) for k, v in params.items()}
+    sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
+    sae.load_state_dict(pt_params)
+    sae._requires_grad = False
+
+    input_features = sae.W_dec[:32000]
+
+    main(input_features, save_dir, big_model=True)
+

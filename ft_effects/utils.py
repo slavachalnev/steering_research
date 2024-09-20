@@ -150,7 +150,7 @@ def get_sae():
 
 
 @torch.no_grad()
-def compute_scores(steer, model, name, criterion, make_plot=True, scales=None):
+def compute_scores(steer, model, name, criterion, hp, make_plot=True, scales=None):
     if scales is None:
         scales = list(range(0, 210, 10))
     scores = []
@@ -158,7 +158,7 @@ def compute_scores(steer, model, name, criterion, make_plot=True, scales=None):
     all_texts = dict()
     products = []
     for scale in tqdm(scales):
-        gen_texts = steer_model(model, steer.to(model.W_E.device), 12, "I think", scale)
+        gen_texts = steer_model(model, steer.to(model.W_E.device), hp, "I think", scale)
         all_texts[scale] = gen_texts
         score, coherence = multi_criterion_evaluation(
             gen_texts,
