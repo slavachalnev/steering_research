@@ -48,7 +48,7 @@ def load_model_and_sae(rank, big_model=False):
     data = tutils.load_dataset("NeelNanda/c4-code-20k", split="train")
     tokenized_data = tutils.tokenize_and_concatenate(data, model.tokenizer, max_length=32)
     tokenized_data = tokenized_data.shuffle(42)
-    loader = DataLoader(tokenized_data, batch_size=32) ####
+    loader = DataLoader(tokenized_data, batch_size=8) ####
     return model, sae, loader
 
 
@@ -59,6 +59,7 @@ def worker(rank, world_size, task_queue, features, save_dir, big_model, scale=No
 
     baseline_samples = gen(model=model, n_batches=20, batch_size=32) ####
     baseline_dist = get_feature_acts(model=model, sae=sae, tokens=baseline_samples, batch_size=64)
+    print('got baseline dist')
 
     results = []
     try:
@@ -73,7 +74,7 @@ def worker(rank, world_size, task_queue, features, save_dir, big_model, scale=No
                                       steer=feature.to(sae.W_dec.device),
                                       loader=loader,
                                       scales=list(range(0, 220, 20)),
-                                      n_batches=4) ####
+                                      n_batches=8) ####
             else:
                 opt_scale = scale
             
