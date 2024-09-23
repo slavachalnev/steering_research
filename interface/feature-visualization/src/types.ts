@@ -7,7 +7,13 @@ export interface FeatureData {
 	values: number[];
 }
 
+export interface Labels {
+	labels: string[];
+}
+
 export interface ProcessedFeaturesType {
+	analysis?: string;
+	distillation?: Labels;
 	feature: number;
 	id: string;
 	feature_results: FeatureData[];

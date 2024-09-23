@@ -8,11 +8,12 @@ import {
 	PADDING,
 	processText,
 	getActivations,
+	getMaxActivatingFeatures,
 } from "../utils";
 import { ProcessedFeaturesType } from "../types";
 import bret_tokens from "../data/base_bret_tokens_small.json";
 import bret_max_activations from "../data/base_bret_max_activations.json";
-
+//
 const Inspector = ({
 	processedFeatures,
 	setProcessedFeatures,
@@ -29,8 +30,8 @@ const Inspector = ({
 	setUniqueFeatures: React.Dispatch<
 		React.SetStateAction<ProcessedFeaturesType[]>
 	>;
-	magnified: number;
-	setMagnified: React.Dispatch<React.SetStateAction<number>>;
+	magnified: number | null;
+	setMagnified: React.Dispatch<React.SetStateAction<number | null>>;
 }) => {
 	const [text, setText] = useState("");
 	const [processingState, setProcessingState] = useState("");
@@ -42,11 +43,13 @@ const Inspector = ({
 	// TODO: This should be a dictionary mapping, indexing into this leads to bugs
 	const [activations, setActivations] = useState(bret_tokens.activations);
 
+	const [maxTokenActivations, setMaxTokenActivations] =
+		useState<any>(bret_max_activations);
 	const [maxActivations, setMaxActivations] = useState<Record<string, number>>(
 		{}
 	);
 
-	const [focusToken, setFocusToken] = useState<number>(-1);
+	const [focusToken, setFocusToken] = useState<number | null>(null);
 
 	const updateFields = (data: any) => {
 		setActivations(data.activations);
@@ -87,27 +90,41 @@ const Inspector = ({
 			setProcessedFeatures(activations);
 			setUniqueFeatures(activations);
 			setText("");
+
+			const maxTokenActivations = await getMaxActivatingFeatures(
+				data.tokens.slice(1).join("")
+			);
+			console.log(maxTokenActivations);
+			setMaxTokenActivations(maxTokenActivations);
 		}
 	};
 
 	const inspectToken = async (index: number) => {
 		if (focusToken == index) {
-			setFocusToken(-1);
+			setFocusToken(null);
+			console.log(uniqueFeatures);
 			setProcessedFeatures(uniqueFeatures);
 		} else {
 			setFocusToken(index);
-			setMagnified(-1);
+			setMagnified(null);
+
+			// console.log(tokens.join(""));
+			// console.log(activations);
+			// console.log(bret_max_activations);
 
 			// These are the top activations for the token
-			let tokenFeatures = bret_max_activations
+			let tokenFeatures = maxTokenActivations
 				.slice(1)
-				[index].top_activations.map((activation) => activation.index);
+				[index].top_activations.map((activation: any) => activation.index);
+
+			console.log(tokenFeatures);
 
 			setProcessingState("Getting feature visualizations");
 			const data = await getActivations(tokenFeatures);
+
+			console.log(data);
 			setProcessingState("");
 			setProcessedFeatures(data);
-			setUniqueFeatures(data);
 		}
 	};
 
@@ -120,6 +137,9 @@ const Inspector = ({
 			};
 		});
 		const result = Object.assign({}, ...maxActivations);
+
+		console.log("MAX ACTIVATIONS");
+		console.log(result);
 		setMaxActivations(result);
 	}, [processedFeatures]);
 
@@ -190,17 +210,16 @@ const Inspector = ({
 							const magnifiedIndex = processedFeatures.findIndex(
 								(feature) => feature.feature === magnified
 							);
-							const value =
-								magnified !== -1 ? activations[i + 1][magnifiedIndex] : 0;
-							const maxValue = magnified !== -1 ? maxActivations[magnified] : 0;
+							const value = magnified ? activations[i + 1][magnifiedIndex] : 0;
+							const maxValue = magnified ? maxActivations[magnified] : 0;
 							return (
 								<TokenDisplay
 									key={i}
 									index={i}
 									token={token}
-									value={focusToken != -1 ? (focusToken == i ? 1 : 0) : value}
-									maxValue={focusToken != -1 ? 1 : maxValue}
-									backgroundColor={focusToken != -1 ? "211, 56,43" : undefined}
+									value={focusToken ? (focusToken == i ? 1 : 0) : value}
+									maxValue={focusToken ? 1 : maxValue}
+									backgroundColor={focusToken ? "211, 56,43" : undefined}
 									color={"white"}
 									fontSize={"18px"}
 									inspectToken={inspectToken}

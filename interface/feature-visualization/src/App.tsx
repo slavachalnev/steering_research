@@ -14,7 +14,7 @@ export default function App() {
 	const [processedFeatures, setProcessedFeatures] =
 		useState<ProcessedFeaturesType[]>(bret_activations);
 
-	const [magnified, setMagnified] = useState<number>(-1);
+	const [magnified, setMagnified] = useState<number | null>(null);
 
 	const [mode, setMode] = useState<"inspector" | "explorer">("inspector");
 
@@ -23,7 +23,7 @@ export default function App() {
 			(feature) => feature.id === id
 		);
 		if (magnified == processedFeatures[index].feature) {
-			setMagnified(-1);
+			setMagnified(null);
 		} else {
 			setMagnified(processedFeatures[index].feature);
 		}
@@ -39,27 +39,6 @@ export default function App() {
 			setMode("inspector");
 		}
 	};
-
-	// const removeFeature = (id: string) => {
-	// 	const indexToRemove = processedFeatures.findIndex(
-	// 		(feature) => feature.id == id
-	// 	);
-
-	// 	if (indexToRemove !== -1) {
-	// 		setProcessedFeatures((prevFeatures) =>
-	// 			prevFeatures.filter((_, index) => index !== indexToRemove)
-	// 		);
-	// 		setActivations((prevActivations) =>
-	// 			prevActivations.map((row) =>
-	// 				row.filter((_, index) => index !== indexToRemove)
-	// 			)
-	// 		);
-
-	// 		if (magnified == processedFeatures[indexToRemove].feature) {
-	// 			setMagnified(-1);
-	// 		}
-	// 	}
-	// };
 
 	return (
 		<div
@@ -110,7 +89,6 @@ export default function App() {
 					onMagnify={mode === "inspector" ? onMagnify : undefined}
 					processedFeatures={processedFeatures}
 					magnified={magnified}
-					// removeFeature={removeFeature}
 				/>
 			)}
 		</div>

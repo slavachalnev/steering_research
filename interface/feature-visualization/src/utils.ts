@@ -54,3 +54,39 @@ export const getActivations = async (features: number[]) => {
 		return [];
 	}
 };
+
+export const getMaxFeatureActs = async (text: string, features: number[]) => {
+	try {
+		const url = `${getBaseUrl()}/get_max_feature_acts?text=${text}&features=${features.join(
+			","
+		)}`;
+		const response = await fetch(url, {
+			method: "GET",
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
+		const data = await response.json();
+		return data;
+	} catch (error) {
+		console.error("Error getting activations:", error);
+		return [];
+	}
+};
+
+export const getMaxActivatingFeatures = async (text: string) => {
+	try {
+		const url = `${getBaseUrl()}/get_max_activating_features?text=${text}`;
+		const response = await fetch(url, {
+			method: "GET",
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
+		const data = await response.json();
+		return data;
+	} catch (error) {
+		console.error("Error getting max activating features:", error);
+		return [];
+	}
+};

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import TokenDisplay from "./TokenDisplay";
-import { getBaseUrl } from "../utils";
+import { getBaseUrl, getMaxFeatureActs } from "../utils";
 import { FeatureCardSubHeader } from "./FeatureCard";
 import { LoadingIcon, MinusIcon, PlusIcon, RightArrowIcon } from "./Icons";
 
@@ -64,21 +64,7 @@ export const TestSample: React.FC<TestSampleProps> = ({
 		setLoading(true);
 
 		try {
-			const url = `${getBaseUrl()}/get_max_feature_acts?text=${encodeURIComponent(
-				testText
-			)}&features=${feature}`;
-			const response = await fetch(url, {
-				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-				},
-			});
-
-			if (!response.ok) {
-				throw new Error("Network response was not ok");
-			}
-
-			const data = await response.json();
+			const data = await getMaxFeatureActs(testText, [feature]);
 			console.log("Max feature acts data:", data);
 			setTestActivations(data.activations);
 			setTextTokens(data.tokens);

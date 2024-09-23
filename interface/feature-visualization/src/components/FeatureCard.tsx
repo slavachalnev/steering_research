@@ -1,7 +1,8 @@
 import "../App.css";
+import ReactMarkdown from "react-markdown";
 
 import { useState, useEffect, useRef } from "react";
-import { Activation } from "../types";
+import { Activation, Labels } from "../types";
 import { FeatureCardCommands } from "./FeatureCardCommands";
 import { TestSamples } from "./TestSamples";
 import TokenDisplay from "./TokenDisplay";
@@ -100,6 +101,8 @@ export function FeatureCardSubHeader({ text }: { text: string }) {
 function FeatureCard({
 	feature,
 	featureId,
+	analysis,
+	distillation,
 	onDelete,
 	onMagnify,
 	activations = [],
@@ -108,17 +111,20 @@ function FeatureCard({
 }: {
 	feature: number;
 	featureId: string;
+	analysis?: string;
+	distillation?: Labels;
 	onDelete?: (id: string) => void;
 	onMagnify?: (id: string) => void;
 	activations: Activation[];
 	maxAct: number;
 	isMagnified: boolean;
 }) {
-	const [description, setDescription] = useState("");
+	const [description, setDescription] = useState(distillation?.labels[0]);
 	const [expanded, setExpanded] = useState(false);
 	const [contentHeight, setContentHeight] = useState("0px");
 	const contentRef = useRef<HTMLDivElement>(null);
 	const [opacity, setOpacity] = useState(0);
+	const [showAnalysis, setShowAnalysis] = useState(false);
 
 	useEffect(() => {
 		if (contentRef.current) {
@@ -136,6 +142,12 @@ function FeatureCard({
 			setOpacity(0);
 		}
 	}, [expanded]);
+
+	useEffect(() => {
+		if (distillation) {
+			setDescription(distillation.labels[0]);
+		}
+	}, [distillation]);
 
 	return (
 		<div
@@ -160,6 +172,7 @@ function FeatureCard({
 					display: "flex",
 					flexDirection: "row",
 					color: "black",
+					position: "relative", // Add this to position the tooltip
 				}}
 			>
 				<FeatureCardCommands
@@ -195,6 +208,36 @@ function FeatureCard({
 					}}
 				>
 					{description}
+					<span
+						style={{
+							marginLeft: "5px",
+							cursor: "pointer",
+						}}
+						onMouseEnter={() => setShowAnalysis(true)}
+						onMouseLeave={() => setShowAnalysis(false)}
+					>
+						ℹ️
+					</span>
+					{showAnalysis && (
+						<div
+							style={{
+								position: "fixed",
+								top: "0",
+								left: "0",
+								backgroundColor: "white",
+								border: "1px solid #ccc",
+								borderRadius: "4px",
+								padding: "8px",
+								zIndex: 1000,
+								maxWidth: "300px",
+								maxHeight: "100vh",
+								overflowY: "scroll",
+								boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+							}}
+						>
+							<ReactMarkdown>{analysis}</ReactMarkdown>
+						</div>
+					)}
 				</div>
 			</div>
 
