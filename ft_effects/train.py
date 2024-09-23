@@ -25,12 +25,14 @@ from steering.patch import patch_resid
 from baselines.analysis import steer_model
 from steering.evals_utils import multi_criterion_evaluation
 
-from ft_effects.utils import get_sae, LinearAdapter
+from ft_effects.utils import get_sae, LinearAdapter, compute_scores
 # %%
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 sae = get_sae()
+
+hp = "blocks.12.hook_resid_post"
 
 # %%
 
@@ -66,7 +68,7 @@ class HybridAdapter(nn.Module):
         
 
 
-def train(num_epochs, lr=1e-4):
+def train(num_epochs, lr=1e-4, weight_decay=1e-5):
     paths = [
         "effects/G2_2B_L12/65k_from_0",
         "effects/G2_2B_L12/65k_from_10k",
@@ -108,7 +110,8 @@ def train(num_epochs, lr=1e-4):
     dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=64, shuffle=False)
 
-    opt = torch.optim.Adam(adapter.parameters(), lr=lr)
+    opt = torch.optim.AdamW(adapter.parameters(), lr=lr, weight_decay=weight_decay)
+
     scheduler = CosineAnnealingLR(opt, T_max=num_epochs)
 
     for epoch in range(num_epochs):
@@ -265,7 +268,7 @@ if __name__ == "__main__":
     linear_single_step_steer = linear_single_step_steer.cpu()
     
     # optimal_steer = adapter.compute_optimal_input(target*1)
-    optimal_steer = single_step_steer(adapter, target, bias_scale=0).cpu() ###TODO: bias scale 1
+    optimal_steer = single_step_steer(adapter, target, bias_scale=1).cpu()
     # optimal_steer = find_optimal_steer(adapter,
     #                                    target,
     #                                    sae.W_enc.shape[0],
@@ -279,6 +282,9 @@ if __name__ == "__main__":
     with torch.no_grad():
         optimal_steer = optimal_steer / torch.norm(optimal_steer)
     
+    print('linear_single_step_steer:', linear_single_step_steer)
+    print('optimal_steer:', optimal_steer)
+
     print('cosine sim between linear and optimal steer:', \
         (linear_single_step_steer @ optimal_steer) / (torch.norm(linear_single_step_steer) * torch.norm(optimal_steer)))
     print()
@@ -324,62 +330,14 @@ if __name__ == "__main__":
 
 
 # %%
-@torch.no_grad()
-def compute_scores(steer, name, criterion, make_plot=True, scales=None):
-    if scales is None:
-        scales = list(range(0, 210, 10))
-    scores = []
-    coherences = []
-    all_texts = dict()
-    products = []
-    for scale in tqdm(scales):
-        gen_texts = steer_model(model, steer.to(device), 12, "I think", scale)
-        all_texts[scale] = gen_texts
-        score, coherence = multi_criterion_evaluation(
-            gen_texts,
-            [
-                criterion,
-                "Text is coherent and the grammar is correct."
-            ],
-            prompt="I think",
-        )
-        score = [item['score'] for item in score]
-        score = [(item - 1) / 9 for item in score]
-        avg_score = sum(score)/len(score)
-        coherence = [item['score'] for item in coherence]
-        coherence = [(item - 1) / 9 for item in coherence]
-        avg_coherence = sum(coherence)/len(coherence)
-        scores.append(avg_score)
-        coherences.append(avg_coherence)
-        products.append(avg_score * avg_coherence)
-    fig = go.Figure()
-    fig.update_layout(
-        title=f"Steering Analysis for {name}",
-        xaxis_title='Scale',
-        yaxis_title='Value',
-        yaxis=dict(range=[0, 1])  # Set y-axis range from 0 to 1
-    )
-    fig.add_trace(go.Scatter(x=scales, y=coherences, mode='lines', name='Coherence'))
-    fig.add_trace(go.Scatter(x=scales, y=scores, mode='lines', name='Score'))
-    fig.add_trace(go.Scatter(x=scales, y=products, mode='lines', name='Coherence * Score'))
-    if make_plot:
-        fig.show()
-        fig.write_image(f"analysis_out/{name}_steer_analysis.png")
-    # save all_texts as json
-    if make_plot:
-        with open(f"analysis_out/{name}_all_texts.json", "w") as f:
-            json.dump(all_texts, f)
-    return scores, coherences, products
-
-# %%
 if __name__ == "__main__":
     # compute_scores(optimal_steer, f"{ft_name}_optimised", criterion)
-    _ = compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, scales=list(range(0, 240, 30)))
+    _ = compute_scores(optimal_steer, model, f"{ft_name}_optimised", criterion, hp, scales=list(range(0, 240, 30)))
     # _ = compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, scales=list(range(100, 300, 20)))
 
 # %%
 if __name__ == "__main__":
-    _ = compute_scores(sae.W_dec[ft_id], f"{ft_name}_decoder", criterion, scales=list(range(0, 240, 30)))
+    _ = compute_scores(sae.W_dec[ft_id], model, f"{ft_name}_decoder", criterion, hp, scales=list(range(0, 240, 30)))
 
 
 

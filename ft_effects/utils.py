@@ -96,6 +96,7 @@ def get_feature_acts(model, sae, tokens, batch_size, hp="blocks.12.hook_resid_po
         _, acts = model.run_with_cache(batch, names_filter=hp, stop_at_layer=13)
         acts = acts[hp] # shape (batch_size, len, d_model)
         acts = acts.reshape(-1, acts.shape[-1]) # shape (batch_size * len, d_model)
+        acts = acts.to(torch.float32)
         sae_acts = sae.encode(acts)
         all_sae_acts += sae_acts.sum(dim=0)
         count += sae_acts.shape[0]
@@ -150,7 +151,7 @@ def get_sae():
 
 
 @torch.no_grad()
-def compute_scores(steer, model, name, criterion, make_plot=True, scales=None):
+def compute_scores(steer, model, name, criterion, hp, make_plot=True, scales=None):
     if scales is None:
         scales = list(range(0, 210, 10))
     scores = []
@@ -158,7 +159,7 @@ def compute_scores(steer, model, name, criterion, make_plot=True, scales=None):
     all_texts = dict()
     products = []
     for scale in tqdm(scales):
-        gen_texts = steer_model(model, steer.to(model.W_E.device), 12, "I think", scale)
+        gen_texts = steer_model(model, steer.to(model.W_E.device), hp, "I think", scale)
         all_texts[scale] = gen_texts
         score, coherence = multi_criterion_evaluation(
             gen_texts,
