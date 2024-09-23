@@ -54,6 +54,7 @@ const Inspector = ({
 	const updateFields = (data: any) => {
 		setActivations(data.activations);
 		setTokens(data.tokens);
+		setProcessedFeatures([]);
 	};
 
 	const resetFields = () => {
@@ -108,16 +109,12 @@ const Inspector = ({
 			setFocusToken(index);
 			setMagnified(null);
 
-			// console.log(tokens.join(""));
-			// console.log(activations);
-			// console.log(bret_max_activations);
-
 			// These are the top activations for the token
 			let tokenFeatures = maxTokenActivations
 				.slice(1)
 				[index].top_activations.map((activation: any) => activation.index);
 
-			console.log(tokenFeatures);
+			setProcessedFeatures([]);
 
 			setProcessingState("Getting feature visualizations");
 			const data = await getActivations(tokenFeatures);

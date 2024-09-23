@@ -1,5 +1,7 @@
 The greatest leaps in the progress of civilization have come from new forms for seeing and discussing ideas, such as written language, printed books, and mathematical notation. Each of these mediums enabled humanity to think and communicate in ways that were previously inconceivable.
 
+Creativity lies in the capacity to see more sharply and with greater insight that which one already knows or that which is buried at the margin of one's awareness.
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
