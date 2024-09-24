@@ -16,7 +16,7 @@ import scipy.linalg as linalg
 
 from transformer_lens import HookedTransformer
 
-from ft_effects.utils import get_sae, compute_scores, LinearAdapter
+from ft_effects.utils import get_sae, compute_scores, LinearAdapter, approximate_adapter
 
 torch.set_grad_enabled(False)
 # %%
@@ -157,9 +157,9 @@ model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device)
 # %%
 hp = "blocks.12.hook_resid_post"
 
-# ft_name = "london"
-# ft_id = 14455 # london
-# criterion = "Text mentions London or anything related to London."
+ft_name = "london"
+ft_id = 14455 # london
+criterion = "Text mentions London or anything related to London."
 
 # ft_name = "wedding"
 # ft_id = 4230 # wedding
@@ -169,9 +169,9 @@ hp = "blocks.12.hook_resid_post"
 # ft_id = 1
 # criterion = "The text is a recipe or a description of a scientific method. Specifically, it mentions serving in a dish or pouring into a beaker etc."
 
-ft_name = "citations"
-ft_id = 115
-criterion = "Text contains academic citations or references."
+# ft_name = "citations"
+# ft_id = 115
+# criterion = "Text contains academic citations or references."
 
 # %%
 sae.to(device)
@@ -225,12 +225,69 @@ _ = compute_scores(steer_with_bias, model, f"{ft_name}_optim_with_bias", criteri
 # _ = compute_scores(steer_with_sparse_bias, model, f"{ft_name}_optim_with_sparse_bias", criterion, hp, scales=list(range(0, 220, 20)))
 
 
+# %%
+
+
+
+class Approximator(nn.Module):
+    def __init__(self, d_model, d_hidden):
+        super().__init__()
+        self.W1 = nn.Parameter(nn.init.kaiming_uniform_(torch.empty(d_model, d_hidden)))
+        self.W2 = nn.Parameter(nn.init.kaiming_uniform_(torch.empty(d_hidden, d_model)))
+    
+    def forward(self, x):
+        return x + x @ self.W1 @ self.W2
+
+
+def approximate_adapter(feats, adapter) -> Approximator:
+    feats = feats.detach()
+    out_feats = []
+    b_to_use = adapter.W @ adapter.b
+    for i, f in enumerate(feats):
+        out_f = adapter.W[:, i] / torch.norm(adapter.W[:, i]) - b_to_use / torch.norm(b_to_use)
+        out_f = out_f / torch.norm(out_f)
+        out_feats.append(out_f)
+    out_feats = torch.stack(out_feats, dim=0).detach()
+
+    # only keep large values
+    large_idxs = torch.where(torch.norm(out_feats, dim=0) >= 0.05)[0]
+    out_feats = out_feats[:, large_idxs]
+
+    # train approximator
+    approx = Approximator(feats.shape[1], 64)
+    approx.to(feats.device)
+    optimizer = torch.optim.Adam(approx.parameters(), lr=1e-3)
+    criterion = nn.MSELoss()
+    for i in range(int(5e3)):
+        optimizer.zero_grad()
+        out = approx(feats)
+        loss = criterion(out, out_feats)
+        loss.backward()
+        if i % 100 == 0:
+            print(loss.item())
+        optimizer.step()
+    return approx
 
 
 
 # %%
+linear_adapter.to(device)
+# torch.set_grad_enabled(True)
+with torch.enable_grad():
+    approx = approximate_adapter(sae.W_dec.to(device), linear_adapter)
 
+approx = approx.cpu()
 
+# %%
+
+approx_steer = approx(sae.W_dec[ft_id].unsqueeze(0))
+print(approx_steer.shape)
+print(approx_steer.device)
+print(torch.norm(approx_steer))
+
+approx_steer = approx_steer / torch.norm(approx_steer)
+
+_ = compute_scores(approx_steer, model, f"{ft_name}_approx_adapter", criterion, hp, scales=list(range(0, 220, 20)))
 # %%
 
 
