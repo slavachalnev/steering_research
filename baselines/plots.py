@@ -29,7 +29,7 @@ def main():
     method_colors = {
         'ActSteer': 'blue',
         'SAE': 'green',
-        'OptimisedSteer': 'red'
+        'OptimisedSteer': 'red',
     }
     
     # Add data to each subplot
@@ -69,10 +69,6 @@ def main():
     fig.update_yaxes(title_text='Coherence * Score', row=1, col=1)
     fig.update_annotations(font_size=12)
     
-    # Save the figure to an HTML file
-    fig.write_html('steering_analysis_plots.html')
-    
-    # Display the figure
     fig.show()
 # %%
 if __name__ == "__main__":

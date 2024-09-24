@@ -248,6 +248,8 @@ if __name__ == "__main__":
 
         # "steer_cfgs/gemma2/london_65k",
         # "steer_cfgs/gemma2/GGB_65k",
+
+        "steer_cfgs/gemma2/citations",
     ]
 
     results = []
