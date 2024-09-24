@@ -58,6 +58,34 @@ fig = px.histogram(encoder_sims.cpu().numpy(),
 fig.update_layout(xaxis_title="Similarity", yaxis_title="Frequency")
 fig.show()
 
+# %%
+
+px.histogram(linear_adapter.b.cpu().numpy(), title="Bias of Linear Adapter").show()
+# %%
+
+topk_indices = linear_adapter.b.cpu().numpy().argsort()[-10:][::-1]
+topk_values = linear_adapter.b.cpu().numpy()[topk_indices]
+
+bottomk_indices = linear_adapter.b.cpu().numpy().argsort()[:10]
+bottomk_values = linear_adapter.b.cpu().numpy()[bottomk_indices]
+
+print("| Rank | Top Indices | Top Values | Bottom Indices | Bottom Values |")
+print("|------|-------------|------------|----------------|---------------|")
+for i in range(10):
+    print(f"| {i+1:<4} | {topk_indices[i]:<11} | {topk_values[i]:>10.4f} | {bottomk_indices[i]:<14} | {bottomk_values[i]:>13.4f} |")
+
+# %%
+# find the linear adapter columns with norm less than 0.05
+small_idxs = torch.where(torch.norm(linear_adapter.W, dim=0) < 0.05)[0]
+print(small_idxs[:10])
+
+# %%
+# # remove the normed adapter columns with norm less than 0.05
+# large_idxs = torch.where(torch.norm(linear_adapter.W, dim=0) >= 0.05)[0]
+# normed_adapter = normed_adapter[:, large_idxs].cpu()
+# normed_encoder = normed_encoder[:, large_idxs].cpu()
+# normed_decoder = normed_decoder[large_idxs].cpu()
+
 
 # %%
 
@@ -102,17 +130,12 @@ def analyze_transformations(X, Y, include_bias=True, linear_threshold=0.01, rota
 
     return torch.tensor(R).to(device)
 
-# remove ft_id 14455 and 4230 from normed_adapter
-censored_adapter = torch.cat([normed_adapter[:, :14455], normed_adapter[:, 14456:4230], normed_adapter[:, 4231:]], dim=1)
-censored_encoder = torch.cat([normed_encoder[:, :14455], normed_encoder[:, 14456:4230], normed_encoder[:, 4231:]], dim=1)
-censored_decoder = torch.cat([normed_decoder[:14455], normed_decoder[14456:4230], normed_decoder[4231:]], dim=0)
-
 # %%
-R = analyze_transformations(censored_adapter, censored_encoder, include_bias=False)
+R = analyze_transformations(normed_adapter, normed_encoder, include_bias=False)
 
 # %%
 
-R_dec = analyze_transformations(censored_adapter, censored_decoder.T, include_bias=False)
+R_dec = analyze_transformations(normed_adapter, normed_decoder.T, include_bias=False)
 
 # %%
 
@@ -132,26 +155,26 @@ px.imshow((R_dec @ R_dec.T)[:30, :30], title="R_dec @ R_dec.T", color_continuous
 model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device)
 
 # %%
+hp = "blocks.12.hook_resid_post"
+
 # ft_name = "london"
 # ft_id = 14455 # london
 # criterion = "Text mentions London or anything related to London."
 
-ft_name = "wedding"
-ft_id = 4230 # wedding
-criterion = "Text mentions weddings or anything related to weddings."
+# ft_name = "wedding"
+# ft_id = 4230 # wedding
+# criterion = "Text mentions weddings or anything related to weddings."
 
 # ft_name = "recipe"
 # ft_id = 1
 # criterion = "The text is a recipe or a description of a scientific method. Specifically, it mentions serving in a dish or pouring into a beaker etc."
 
+ft_name = "citations"
+ft_id = 115
+criterion = "Text contains academic citations or references."
 
 # %%
 sae.to(device)
-# transformed_steer = R_dec.T @ R_dec.T @ sae.W_dec[ft_id] # two rotations
-# transformed_steer = R_dec.T @ sae.W_dec[ft_id] # one rotation
-transformed_steer = R_dec @ sae.W_dec[ft_id]  # rotate in opposite direction
-
-transformed_steer = transformed_steer / torch.norm(transformed_steer)
 
 # with adapter bias
 adapter = LinearAdapter(sae.W_enc.shape[0], sae.W_enc.shape[1])
@@ -165,7 +188,7 @@ transformed_steer = transformed_steer / torch.norm(transformed_steer)
 transformed_steer = transformed_steer - 1 * b
 transformed_steer = transformed_steer / torch.norm(transformed_steer)
 
-_ = compute_scores(transformed_steer, model, f"{ft_name}_rotated_decoder_with_bias", criterion, scales=list(range(0, 220, 20)))
+_ = compute_scores(transformed_steer, model, f"{ft_name}_rotated_decoder_with_bias", criterion, hp, scales=list(range(0, 220, 20)))
 
 # %%
 
@@ -174,15 +197,39 @@ random_steer = torch.randn(sae.W_enc.shape[0]).to(device)
 random_steer = random_steer / torch.norm(random_steer)
 random_steer_with_bias = random_steer - 1 * b
 random_steer_with_bias = random_steer_with_bias / torch.norm(random_steer_with_bias)
-_ = compute_scores(random_steer_with_bias, model, f"random_steer_with_bias", criterion, scales=list(range(0, 220, 20)))
+_ = compute_scores(random_steer_with_bias, model, f"random_steer_with_bias", criterion, hp, scales=list(range(0, 220, 20)))
 
 # compared to no adapter bias
-_ = compute_scores(random_steer, model, f"random_steer_no_bias", criterion, scales=list(range(0, 220, 20)))
-
-# %%
+_ = compute_scores(random_steer, model, f"random_steer_no_bias", criterion, hp, scales=list(range(0, 220, 20)))
 
 
 # %%
+##################################################################################
+sparse_adapter_b = adapter.b.clone()
+sparse_adapter_b[7507] = 0
+sparse_adapter_b[1041] = 0
+        
+sparse_b = adapter.W @ sparse_adapter_b
+sparse_b = sparse_b / torch.norm(sparse_b)
+
+# compare optim steer with and without bias sparsity
+steer = linear_adapter.W[:, ft_id].to(device)
+steer = steer / torch.norm(steer)
+steer_with_bias = steer - 1 * b
+steer_with_bias = steer_with_bias / torch.norm(steer_with_bias)
+steer_with_sparse_bias = steer - 1 * sparse_b
+steer_with_sparse_bias = steer_with_sparse_bias / torch.norm(steer_with_sparse_bias)
+
+# _ = compute_scores(steer, model, f"{ft_name}_optim", criterion, hp, scales=list(range(0, 220, 20)))
+_ = compute_scores(steer_with_bias, model, f"{ft_name}_optim_with_bias", criterion, hp, scales=list(range(0, 220, 20)))
+# _ = compute_scores(steer_with_sparse_bias, model, f"{ft_name}_optim_with_sparse_bias", criterion, hp, scales=list(range(0, 220, 20)))
+
+
+
+
+
+# %%
+
 
 # %%
 
