@@ -33,12 +33,14 @@ def load_model_and_sae(rank, big_model=False):
             repo_id="google/gemma-scope-9b-pt-res",
             filename="layer_12/width_16k/average_l0_130/params.npz",
             force_download=False)
+        loader_batch_size = 8  # Lower batch size for big models
     else:
         model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device, dtype=torch.float16)
         path_to_params = hf_hub_download(
             repo_id="google/gemma-scope-2b-pt-res",
             filename="layer_12/width_16k/average_l0_82/params.npz",
             force_download=False)
+        loader_batch_size = 64  # Higher batch size for small models
     params = np.load(path_to_params)
     pt_params = {k: torch.from_numpy(v).to(device) for k, v in params.items()}
     sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
@@ -48,7 +50,7 @@ def load_model_and_sae(rank, big_model=False):
     data = tutils.load_dataset("NeelNanda/c4-code-20k", split="train")
     tokenized_data = tutils.tokenize_and_concatenate(data, model.tokenizer, max_length=32)
     tokenized_data = tokenized_data.shuffle(42)
-    loader = DataLoader(tokenized_data, batch_size=8) ####
+    loader = DataLoader(tokenized_data, batch_size=loader_batch_size)
     return model, sae, loader
 
 
@@ -57,7 +59,12 @@ def worker(rank, world_size, task_queue, features, save_dir, big_model, scale=No
     setup(rank, world_size)
     model, sae, loader = load_model_and_sae(rank, big_model=big_model)
 
-    baseline_samples = gen(model=model, n_batches=20, batch_size=32) ####
+    if big_model:
+        # Lower batch sizes for big models
+        baseline_samples = gen(model=model, n_batches=20, batch_size=32)
+    else:
+        # Higher batch sizes for small models
+        baseline_samples = gen(model=model, n_batches=10)
     baseline_dist = get_feature_acts(model=model, sae=sae, tokens=baseline_samples, batch_size=64)
     print('got baseline dist')
 
@@ -70,15 +77,24 @@ def worker(rank, world_size, task_queue, features, save_dir, big_model, scale=No
                 break
             feature = features[feature_index]
             if scale is None:
-                opt_scale = get_scale(model=model,
-                                      steer=feature.to(sae.W_dec.device),
-                                      loader=loader,
-                                      scales=list(range(0, 220, 20)),
-                                      n_batches=8) ####
+                if big_model:
+                    opt_scale = get_scale(model=model,
+                                          steer=feature.to(sae.W_dec.device),
+                                          loader=loader,
+                                          scales=list(range(0, 220, 20)),
+                                          n_batches=8)
+                else:
+                    opt_scale = get_scale(model=model,
+                                          steer=feature.to(sae.W_dec.device),
+                                          loader=loader,
+                                          scales=list(range(0, 220, 20)))
             else:
                 opt_scale = scale
-            
-            ft_samples = gen(model=model, steer=feature.to(sae.W_dec.device), scale=opt_scale, n_batches=2, batch_size=32) ####
+
+            if big_model:
+                ft_samples = gen(model=model, steer=feature.to(sae.W_dec.device), scale=opt_scale, n_batches=2, batch_size=32)
+            else:
+                ft_samples = gen(model=model, steer=feature.to(sae.W_dec.device), scale=opt_scale)
             ft_dist = get_feature_acts(model=model, sae=sae, tokens=ft_samples, batch_size=64)
             diff = ft_dist - baseline_dist
             results.append({
@@ -153,6 +169,7 @@ def main(features, save_dir, big_model=False):
     torch.save(all_effects, os.path.join(save_dir, "all_effects.pt"))
     torch.save(all_used_features, os.path.join(save_dir, "used_features.pt"))
     print('done save')
+
 
 if __name__ == "__main__":
     torch.set_grad_enabled(False)
