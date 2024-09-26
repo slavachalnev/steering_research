@@ -137,11 +137,17 @@ def get_scale(
 
 
 @torch.no_grad()
-def get_sae():
-    path_to_params = hf_hub_download(
-        repo_id="google/gemma-scope-2b-pt-res",
-        filename="layer_12/width_16k/average_l0_82/params.npz",
-        force_download=False)
+def get_sae(big_model=False):
+    if big_model:
+        path_to_params = hf_hub_download(
+            repo_id="google/gemma-scope-9b-pt-res",
+            filename="layer_12/width_16k/average_l0_130/params.npz",
+            force_download=False)
+    else:
+        path_to_params = hf_hub_download(
+            repo_id="google/gemma-scope-2b-pt-res",
+            filename="layer_12/width_16k/average_l0_82/params.npz",
+            force_download=False)
     params = np.load(path_to_params)
     pt_params = {k: torch.from_numpy(v) for k, v in params.items()}
     sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
@@ -151,7 +157,7 @@ def get_sae():
 
 
 @torch.no_grad()
-def compute_scores(steer, model, name, criterion, hp, make_plot=True, scales=None):
+def compute_scores(steer, model, name, criterion, hp, make_plot=True, scales=None, batch_size=64):
     if scales is None:
         scales = list(range(0, 210, 10))
     scores = []
@@ -159,7 +165,7 @@ def compute_scores(steer, model, name, criterion, hp, make_plot=True, scales=Non
     all_texts = dict()
     products = []
     for scale in tqdm(scales):
-        gen_texts = steer_model(model, steer.to(model.W_E.device), hp, "I think", scale)
+        gen_texts = steer_model(model, steer.to(model.W_E.device), hp, "I think", scale, batch_size=batch_size)
         all_texts[scale] = gen_texts
         score, coherence = multi_criterion_evaluation(
             gen_texts,

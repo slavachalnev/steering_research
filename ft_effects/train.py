@@ -28,9 +28,11 @@ from steering.evals_utils import multi_criterion_evaluation
 from ft_effects.utils import get_sae, LinearAdapter, compute_scores
 # %%
 
+BIG_MODEL = True
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-sae = get_sae()
+sae = get_sae(big_model=BIG_MODEL)
 
 hp = "blocks.12.hook_resid_post"
 
@@ -69,22 +71,28 @@ class HybridAdapter(nn.Module):
 
 
 def train(num_epochs, lr=1e-4, weight_decay=1e-5):
-    paths = [
-        "effects/G2_2B_L12/65k_from_0",
-        "effects/G2_2B_L12/65k_from_10k",
-        "effects/G2_2B_L12/65k_from_20k",
-        "effects/G2_2B_L12/65k_from_30k",
-        "effects/G2_2B_L12/65k_from_40k",
+    if BIG_MODEL:
+        paths = [
+            "effects/G2_9B_L12/131k_from_0",
+            "effects/G2_9B_L12/131k_from_64k",
+        ]
+    else:
+        paths = [
+            "effects/G2_2B_L12/65k_from_0",
+            "effects/G2_2B_L12/65k_from_10k",
+            "effects/G2_2B_L12/65k_from_20k",
+            "effects/G2_2B_L12/65k_from_30k",
+            "effects/G2_2B_L12/65k_from_40k",
 
-        # "effects/G2_2B_L12/16k_from_0",
-        # "effects/G2_2B_L12/sample_and_combine_16k",
+            # "effects/G2_2B_L12/16k_from_0",
+            # "effects/G2_2B_L12/sample_and_combine_16k",
 
-        # "effects/G2_2B_L12/random",
-        # "effects/G2_2B_L12/random_2",
-        # "effects/G2_2B_L12/random_3",
-        # "effects/G2_2B_L12/random_4",
-        # "effects/G2_2B_L12/random_5",
-    ]
+            # "effects/G2_2B_L12/random",
+            # "effects/G2_2B_L12/random_2",
+            # "effects/G2_2B_L12/random_3",
+            # "effects/G2_2B_L12/random_4",
+            # "effects/G2_2B_L12/random_5",
+        ]
 
     features = []
     effects = []
@@ -162,11 +170,12 @@ if __name__ == "__main__":
     adapter.to(device)
     train(15, lr=2e-4)
 
-    linear_adapter = LinearAdapter(sae.W_enc.shape[0], sae.W_enc.shape[1])
-    linear_adapter.load_state_dict(torch.load("linear_adapter.pt"))
-
 # # %%
-#     torch.save(adapter.state_dict(), "linear_adapter.pt")
+
+    # if BIG_MODEL:
+    #     torch.save(adapter.state_dict(), "linear_adapter_9B.pt")
+    # else:
+    #     torch.save(adapter.state_dict(), "linear_adapter_2B.pt")
 # %%
 
 def find_optimal_steer(adapter, target, d_model,
@@ -220,10 +229,10 @@ target = torch.zeros(sae.W_enc.shape[1])
 target_value = 1
 
 
-ft_name = "london"
-ft_id = 14455 # london
-target[ft_id] = target_value # london
-criterion = "Text mentions London or anything related to London."
+# ft_name = "london"
+# ft_id = 14455 # london
+# target[ft_id] = target_value # london
+# criterion = "Text mentions London or anything related to London."
 
 # ft_name = "wedding"
 # ft_id = 4230 # wedding
@@ -252,6 +261,15 @@ criterion = "Text mentions London or anything related to London."
 # criterion = "The text is a recipe or a description of a scientific method. Specifically, it mentions serving in a dish or pouring into a beaker etc."
 
 
+##########
+# big model
+
+ft_name = "london"
+ft_id = 6915
+target[ft_id] = target_value
+criterion = "Text mentions London or anything related to London."
+
+
 
 # %%
 # optimal_steer = find_optimal_steer(adapter, target, sae.W_enc.shape[0], n_steps=int(1), target_scale=100)
@@ -261,11 +279,6 @@ criterion = "Text mentions London or anything related to London."
 # optimal_steer = adapter.compute_optimal_input(torch.zeros_like(target))
 
 if __name__ == "__main__":
-    linear_adapter.to(device)
-    linear_single_step_steer = single_step_steer(linear_adapter, target, bias_scale=1)
-    with torch.no_grad():
-        linear_single_step_steer = linear_single_step_steer / torch.norm(linear_single_step_steer)
-    linear_single_step_steer = linear_single_step_steer.cpu()
     
     # optimal_steer = adapter.compute_optimal_input(target*1)
     optimal_steer = single_step_steer(adapter, target, bias_scale=1).cpu()
@@ -274,7 +287,6 @@ if __name__ == "__main__":
     #                                    sae.W_enc.shape[0],
     #                                    n_steps=int(1e4),
     #                                    target_scale=10,
-    #                                 #    init_steer=linear_single_step_steer,
     #                                    init_steer=torch.randn(sae.W_enc.shape[0]),
     #                                 #    init_steer=torch.zeros(sae.W_enc.shape[0]),
     #                                    ).cpu()
@@ -282,13 +294,6 @@ if __name__ == "__main__":
     with torch.no_grad():
         optimal_steer = optimal_steer / torch.norm(optimal_steer)
     
-    print('linear_single_step_steer:', linear_single_step_steer)
-    print('optimal_steer:', optimal_steer)
-
-    print('cosine sim between linear and optimal steer:', \
-        (linear_single_step_steer @ optimal_steer) / (torch.norm(linear_single_step_steer) * torch.norm(optimal_steer)))
-    print()
-
     # cosine sims between optimal steer and all vector of sae.W_dec
     sims = (sae.W_dec @ optimal_steer) / (torch.norm(sae.W_dec, dim=-1) * torch.norm(optimal_steer))
     # top sims
@@ -296,22 +301,22 @@ if __name__ == "__main__":
     print("sae_16k top_sims:", top_sims)
     print("sae_16k top_indices:", top_indices)
 
-    def get_sae_dec():
-        path_to_params = hf_hub_download(
-            repo_id="google/gemma-scope-2b-pt-res",
-            filename="layer_12/width_65k/average_l0_72/params.npz",
-            force_download=False)
-        params = np.load(path_to_params)
-        pt_params = {k: torch.from_numpy(v).cuda() for k, v in params.items()}
-        sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
-        sae.load_state_dict(pt_params)
-        return sae.W_dec
+    # def get_sae_dec():
+    #     path_to_params = hf_hub_download(
+    #         repo_id="google/gemma-scope-2b-pt-res",
+    #         filename="layer_12/width_65k/average_l0_72/params.npz",
+    #         force_download=False)
+    #     params = np.load(path_to_params)
+    #     pt_params = {k: torch.from_numpy(v).cuda() for k, v in params.items()}
+    #     sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
+    #     sae.load_state_dict(pt_params)
+    #     return sae.W_dec
 
-    sae_65k = get_sae_dec()
-    sims = (sae_65k @ optimal_steer) / (torch.norm(sae_65k, dim=-1) * torch.norm(optimal_steer))
-    top_sims, top_indices = torch.topk(sims, 10)
-    print("sae_65k top_sims:", top_sims)
-    print("sae_65k top_indices:", top_indices)
+    # sae_65k = get_sae_dec()
+    # sims = (sae_65k @ optimal_steer) / (torch.norm(sae_65k, dim=-1) * torch.norm(optimal_steer))
+    # top_sims, top_indices = torch.topk(sims, 10)
+    # print("sae_65k top_sims:", top_sims)
+    # print("sae_65k top_indices:", top_indices)
 
 
 # # %%
@@ -325,19 +330,24 @@ if __name__ == "__main__":
 ####### steer ######
 
 if __name__ == "__main__":
-    model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device)
+    if BIG_MODEL:
+        model = HookedTransformer.from_pretrained("google/gemma-2-9b", device=device, dtype=torch.float16)
+        batch_size = 16
+    else:
+        model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device)
+        batch_size = 64
     hp = "blocks.12.hook_resid_post"
 
 
 # %%
 if __name__ == "__main__":
     # compute_scores(optimal_steer, f"{ft_name}_optimised", criterion)
-    _ = compute_scores(optimal_steer, model, f"{ft_name}_optimised", criterion, hp, scales=list(range(0, 240, 30)))
+    _ = compute_scores(optimal_steer, model, f"{ft_name}_optimised", criterion, hp, scales=list(range(0, 240, 30)), batch_size=batch_size)
     # _ = compute_scores(optimal_steer, f"{ft_name}_optimised", criterion, scales=list(range(100, 300, 20)))
 
 # %%
 if __name__ == "__main__":
-    _ = compute_scores(sae.W_dec[ft_id], model, f"{ft_name}_decoder", criterion, hp, scales=list(range(0, 240, 30)))
+    _ = compute_scores(sae.W_dec[ft_id], model, f"{ft_name}_decoder", criterion, hp, scales=list(range(0, 240, 30)), batch_size=batch_size)
 
 
 
