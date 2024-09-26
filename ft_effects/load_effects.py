@@ -8,14 +8,14 @@ import einops
 
 
 # %%
-paths = [
+paths = [ # small model
     # "effects/G2_2B_L12/65k_from_0",
     # "effects/G2_2B_L12/65k_from_10k",
     # "effects/G2_2B_L12/65k_from_20k",
     # "effects/G2_2B_L12/65k_from_30k",
     # "effects/G2_2B_L12/65k_from_40k",
 
-    "effects/G2_2B_L12/16k_from_0",
+    # "effects/G2_2B_L12/16k_from_0",
     # "effects/G2_2B_L12/sample_and_combine_16k",
 
     # "effects/G2_2B_L12/random",
@@ -23,6 +23,11 @@ paths = [
     # "effects/G2_2B_L12/random_3",
     # "effects/G2_2B_L12/random_4",
     # "effects/G2_2B_L12/random_5",
+]
+
+paths = [ # big model
+    "effects/G2_9B_L12/131k_from_0",
+    "effects/G2_9B_L12/131k_from_64k",
 ]
 
 features = []
@@ -35,10 +40,10 @@ for path in paths:
 features = torch.cat(features)
 effects = torch.cat(effects)
 # %%
-# print(features.shape)
-# print(effects.shape)
-# print(torch.norm(features[4230]))
-# print(torch.norm(features[14455]))
+print(features.shape)
+print(effects.shape)
+print(torch.norm(features[4230]))
+print(torch.norm(features[14455]))
 
 # %%
 

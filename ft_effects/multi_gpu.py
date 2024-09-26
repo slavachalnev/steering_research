@@ -82,12 +82,16 @@ def worker(rank, world_size, task_queue, features, save_dir, big_model, scale=No
                                           steer=feature.to(sae.W_dec.device),
                                           loader=loader,
                                           scales=list(range(0, 220, 20)),
-                                          n_batches=8)
+                                          n_batches=8,
+                                          target_loss=3,
+                                          )
                 else:
                     opt_scale = get_scale(model=model,
                                           steer=feature.to(sae.W_dec.device),
                                           loader=loader,
-                                          scales=list(range(0, 220, 20)))
+                                          scales=list(range(0, 220, 20)),
+                                          target_loss=6,
+                                          )
             else:
                 opt_scale = scale
 
