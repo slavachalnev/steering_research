@@ -264,11 +264,15 @@ target_value = 1
 ##########
 # big model
 
-ft_name = "london"
-ft_id = 6915
-target[ft_id] = target_value
-criterion = "Text mentions London or anything related to London."
+# ft_name = "london"
+# ft_id = 6915
+# target[ft_id] = target_value
+# criterion = "Text mentions London or anything related to London."
 
+ft_name = "wedding"
+ft_id = 2822
+target[ft_id] = target_value
+criterion = "Text mentions weddings or anything related to weddings."
 
 
 # %%

@@ -26,7 +26,7 @@ from huggingface_hub import hf_hub_download, HfFileSystem
 torch.set_grad_enabled(False)
 
 # Set the global variable BIG_MODEL
-BIG_MODEL = False  # Set to True for the 9B model, False for the 2B model
+BIG_MODEL = True  # Set to True for the 9B model, False for the 2B model
 
 # %%
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -124,7 +124,16 @@ def compute_loss(steer, scales, n_batches):
 
 # %%
 
+# # loss for ft_id 2822 -- big model wedding feature.
+# steer = sae.W_dec[2822].to(device)
+# losses = compute_loss(steer, scales, n_batches=4)
+# print(scales)
+# print(losses)
+
+# %%
+
 def compute_all(n=100):
+    n_batches = n_samples // batch_size
     all_coherences: list[list[float]] = []
     all_losses: list[list[float]] = []
 
@@ -132,7 +141,7 @@ def compute_all(n=100):
         steer = sae.W_dec[i].to(device)
 
         cohs: list[float] = coherence(steer, scales)
-        losses = compute_loss(steer, scales, n_batches=1)
+        losses = compute_loss(steer, scales, n_batches=n_batches)
 
         all_coherences.append(cohs)
         all_losses.append(losses)
@@ -141,7 +150,7 @@ def compute_all(n=100):
 
 # %%
 
-all_c, all_l = compute_all(10)
+all_c, all_l = compute_all(7)
 
 # %%
 

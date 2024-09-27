@@ -15,6 +15,7 @@ from steering.sae import JumpReLUSAE
 from huggingface_hub import hf_hub_download
 import numpy as np
 from queue import Empty
+import time
 
 def setup(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
@@ -75,6 +76,7 @@ def worker(rank, world_size, task_queue, features, save_dir, big_model, scale=No
                 feature_index = task_queue.get(timeout=1)  # 1 second timeout
             except Empty:
                 break
+            start_time = time.time()  # Start timing
             feature = features[feature_index]
             if scale is None:
                 if big_model:
@@ -83,14 +85,14 @@ def worker(rank, world_size, task_queue, features, save_dir, big_model, scale=No
                                           loader=loader,
                                           scales=list(range(0, 220, 20)),
                                           n_batches=8,
-                                          target_loss=3,
+                                          target_loss=3.5,
                                           )
                 else:
                     opt_scale = get_scale(model=model,
                                           steer=feature.to(sae.W_dec.device),
                                           loader=loader,
                                           scales=list(range(0, 220, 20)),
-                                          target_loss=6,
+                                          target_loss=4,
                                           )
             else:
                 opt_scale = scale
@@ -106,7 +108,8 @@ def worker(rank, world_size, task_queue, features, save_dir, big_model, scale=No
                 'used_feature': (feature * opt_scale).cpu(),
                 'feature_index': feature_index
             })
-            print(f"processed {feature_index}")
+            elapsed_time = time.time() - start_time  # Calculate elapsed time
+            print(f"processed {feature_index} in {elapsed_time:.2f} seconds")
     finally:
         torch.save(results, os.path.join(save_dir, f"partial_results_rank_{rank}.pt"))
         cleanup()
@@ -254,54 +257,54 @@ if __name__ == "__main__":
     # steering_vectors = steering_vectors / steering_vectors.norm(dim=-1, keepdim=True)
     # main(steering_vectors, save_dir)
     
-    # ###################################
-    # # # 9b
-    # save_dir = "effects/G2_9B_L12/131k_from_0"
-    # os.makedirs(save_dir)
-
-    # # 131k
-    # path_to_params = hf_hub_download(
-    #     repo_id="google/gemma-scope-9b-pt-res",
-    #     filename="layer_12/width_131k/average_l0_96/params.npz",
-    #     force_download=False)
-    # params = np.load(path_to_params)
-    # pt_params = {k: torch.from_numpy(v) for k, v in params.items()}
-    # sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
-    # sae.load_state_dict(pt_params)
-    # sae._requires_grad = False
-
-    # input_features = sae.W_dec[:32000]
-
-    # main(input_features, save_dir, big_model=True)
-
-
-    # ###################################
-    # # 2b
-    # # load adapter. Then find the 16k features that have the biggest effects
-    # # steer with the optimised features.
-    
-    save_dir = "effects/G2_2B_L12/optimised_16k"
+    ###################################
+    # # 9b
+    save_dir = "effects/G2_9B_L12/131k_from_0_fixloss"
     os.makedirs(save_dir)
 
-    from ft_effects.utils import LinearAdapter, get_sae
-    sae = get_sae()
+    # 131k
+    path_to_params = hf_hub_download(
+        repo_id="google/gemma-scope-9b-pt-res",
+        filename="layer_12/width_131k/average_l0_96/params.npz",
+        force_download=False)
+    params = np.load(path_to_params)
+    pt_params = {k: torch.from_numpy(v) for k, v in params.items()}
+    sae = JumpReLUSAE(params['W_enc'].shape[0], params['W_enc'].shape[1])
+    sae.load_state_dict(pt_params)
+    sae._requires_grad = False
 
-    # load adapter
-    adapter = LinearAdapter(sae.W_enc.shape[0], sae.W_enc.shape[1])
-    adapter.load_state_dict(torch.load("linear_adapter.pt"))
-    adapter.cpu()
+    input_features = sae.W_dec[:32000]
 
-    b = adapter.W @ adapter.b
-    b = b/torch.norm(b)
-    input_features = []
-    for f in adapter.W.T:
-        f_to_add = f/torch.norm(f) - b
-        f_to_add = f_to_add/torch.norm(f_to_add)
-        input_features.append(f_to_add)
-    input_features = torch.stack(input_features)
-    print(input_features.shape)
+    main(input_features, save_dir, big_model=True)
 
-    main(input_features, save_dir)
+
+    # # ###################################
+    # # # 2b
+    # # # load adapter. Then find the 16k features that have the biggest effects
+    # # # steer with the optimised features.
+    
+    # save_dir = "effects/G2_2B_L12/optimised_16k"
+    # os.makedirs(save_dir)
+
+    # from ft_effects.utils import LinearAdapter, get_sae
+    # sae = get_sae()
+
+    # # load adapter
+    # adapter = LinearAdapter(sae.W_enc.shape[0], sae.W_enc.shape[1])
+    # adapter.load_state_dict(torch.load("linear_adapter.pt"))
+    # adapter.cpu()
+
+    # b = adapter.W @ adapter.b
+    # b = b/torch.norm(b)
+    # input_features = []
+    # for f in adapter.W.T:
+    #     f_to_add = f/torch.norm(f) - b
+    #     f_to_add = f_to_add/torch.norm(f_to_add)
+    #     input_features.append(f_to_add)
+    # input_features = torch.stack(input_features)
+    # print(input_features.shape)
+
+    # main(input_features, save_dir)
 
 
 

@@ -15,7 +15,7 @@ paths = [ # small model
     # "effects/G2_2B_L12/65k_from_30k",
     # "effects/G2_2B_L12/65k_from_40k",
 
-    # "effects/G2_2B_L12/16k_from_0",
+    "effects/G2_2B_L12/16k_from_0",
     # "effects/G2_2B_L12/sample_and_combine_16k",
 
     # "effects/G2_2B_L12/random",
@@ -25,10 +25,10 @@ paths = [ # small model
     # "effects/G2_2B_L12/random_5",
 ]
 
-paths = [ # big model
-    "effects/G2_9B_L12/131k_from_0",
-    "effects/G2_9B_L12/131k_from_64k",
-]
+# paths = [ # big model
+#     "effects/G2_9B_L12/131k_from_0",
+#     "effects/G2_9B_L12/131k_from_64k",
+# ]
 
 features = []
 effects = []
@@ -39,6 +39,12 @@ for path in paths:
 
 features = torch.cat(features)
 effects = torch.cat(effects)
+
+# %%
+
+# norm of first 10 features
+print(features[:10].norm(dim=-1))
+
 # %%
 print(features.shape)
 print(effects.shape)
@@ -72,4 +78,5 @@ print(bottom_10)
 print(effects_abs[bottom_10])
 
 # %%
+
 

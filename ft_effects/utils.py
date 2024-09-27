@@ -109,7 +109,7 @@ def get_scale(
         loader,
         scales,
         n_batches=2,
-        target_loss=6,
+        target_loss=4,
         hp="blocks.12.hook_resid_post",
     ):
     assert torch.allclose(torch.norm(steer), torch.tensor(1.0))
@@ -120,7 +120,7 @@ def get_scale(
             with model.hooks(fwd_hooks=[(hp, partial(patch_resid, steering=steer, scale=scale))]):
                 loss = model(batch['tokens'], return_type='loss')
                 total_loss += loss
-            if batch_idx >= n_batches:
+            if batch_idx >= n_batches - 1:
                 break
         losses.append(total_loss.item() / n_batches)
         if total_loss.item()/n_batches > target_loss:
