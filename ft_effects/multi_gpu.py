@@ -34,7 +34,7 @@ def load_model_and_sae(rank, big_model=False):
             repo_id="google/gemma-scope-9b-pt-res",
             filename="layer_12/width_16k/average_l0_130/params.npz",
             force_download=False)
-        loader_batch_size = 8  # Lower batch size for big models
+        loader_batch_size = 4  # Lower batch size for big models
     else:
         model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device, dtype=torch.float16)
         path_to_params = hf_hub_download(
@@ -66,7 +66,7 @@ def worker(rank, world_size, task_queue, features, save_dir, big_model, scale=No
     else:
         # Higher batch sizes for small models
         baseline_samples = gen(model=model, n_batches=10)
-    baseline_dist = get_feature_acts(model=model, sae=sae, tokens=baseline_samples, batch_size=64)
+    baseline_dist = get_feature_acts(model=model, sae=sae, tokens=baseline_samples, batch_size=32)
     print('got baseline dist')
 
     results = []
@@ -101,7 +101,7 @@ def worker(rank, world_size, task_queue, features, save_dir, big_model, scale=No
                 ft_samples = gen(model=model, steer=feature.to(sae.W_dec.device), scale=opt_scale, n_batches=2, batch_size=32)
             else:
                 ft_samples = gen(model=model, steer=feature.to(sae.W_dec.device), scale=opt_scale)
-            ft_dist = get_feature_acts(model=model, sae=sae, tokens=ft_samples, batch_size=64)
+            ft_dist = get_feature_acts(model=model, sae=sae, tokens=ft_samples, batch_size=32)
             diff = ft_dist - baseline_dist
             results.append({
                 'effect': diff.cpu(),
