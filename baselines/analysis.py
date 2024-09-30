@@ -229,9 +229,14 @@ def analyse_steer(model, steer, hp, path, method='activation_steering'):
 # %%
 if __name__ == "__main__":
     torch.set_grad_enabled(False)
+    big_model = False
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device)
-
+    if big_model:
+        model = HookedTransformer.from_pretrained("google/gemma-2-9b", device=device, dtype=torch.float16)
+        model_name = "gemma-2-9b"
+    else:
+        model = HookedTransformer.from_pretrained("google/gemma-2-2b", device=device, dtype=torch.float16)
+        model_name = "gemma-2-2b"
 # %%
 if __name__ == "__main__":
 
@@ -249,7 +254,7 @@ if __name__ == "__main__":
         # "steer_cfgs/gemma2/london_65k",
         # "steer_cfgs/gemma2/GGB_65k",
 
-        "steer_cfgs/gemma2/citations",
+        # "steer_cfgs/gemma2/citations",
     ]
 
     results = []
@@ -292,11 +297,11 @@ if __name__ == "__main__":
         graph_data_list.append(graph_data)
 
     # Write the results to a JSON file
-    with open('steering_results.json', 'w') as f:
+    with open(f'steering_results_{model_name}.json', 'w') as f:
         json.dump(results, f, indent=2)
 
     # Write the graph data to a JSON file
-    with open('graph_data_all_methods.json', 'w') as f:
+    with open(f'graph_data_all_methods_{model_name}.json', 'w') as f:
         json.dump(graph_data_list, f, indent=2)
 
 # # %%
