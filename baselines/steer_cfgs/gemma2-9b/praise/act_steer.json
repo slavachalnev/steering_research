@@ -1,0 +1,17 @@
+{
+	"pos": [
+		"Intent to praise",
+		"You are a good person",
+		"You are doing good things",
+		"You're amazing",
+		"That was a brilliant idea"
+	],
+	"neg": [
+		"Intent to hurt",
+		"You are a bad person",
+		"You are doing bad things",
+		"You're completely useless",
+		"That was a complete waste of time"
+	],
+	"layer": 12
+}

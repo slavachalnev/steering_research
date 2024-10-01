@@ -66,6 +66,7 @@ def train(num_epochs, lr=1e-4, weight_decay=1e-5):
         paths = [
             "effects/G2_9B_L12/131k_from_0",
             "effects/G2_9B_L12/131k_from_16k",
+            "effects/G2_9B_L12/131k_from_32k",
         ]
     else:
         paths = [
