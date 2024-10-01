@@ -13,17 +13,8 @@ import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from functools import partial
-import json
 
 from transformer_lens import HookedTransformer
-from huggingface_hub import hf_hub_download
-
-from steering.sae import JumpReLUSAE
-from steering.patch import patch_resid
-
-from baselines.analysis import steer_model
-from steering.evals_utils import multi_criterion_evaluation
 
 from ft_effects.utils import get_sae, LinearAdapter, compute_scores
 # %%
@@ -74,7 +65,7 @@ def train(num_epochs, lr=1e-4, weight_decay=1e-5):
     if BIG_MODEL:
         paths = [
             "effects/G2_9B_L12/131k_from_0",
-            "effects/G2_9B_L12/131k_from_64k",
+            "effects/G2_9B_L12/131k_from_16k",
         ]
     else:
         paths = [
@@ -264,15 +255,22 @@ target_value = 1
 ##########
 # big model
 
-# ft_name = "london"
-# ft_id = 6915
-# target[ft_id] = target_value
-# criterion = "Text mentions London or anything related to London."
-
-ft_name = "wedding"
-ft_id = 2822
+ft_name = "london"
+# ft_id = 6915 # big city/london?
+ft_id = 9983 # city
 target[ft_id] = target_value
-criterion = "Text mentions weddings or anything related to weddings."
+target[6915] = target_value # big city london
+# target[12954] = target_value # English
+target[11748] = target_value # UK (also Aus)
+# target[9983] = target_value # city
+target = target / torch.norm(target)
+target *= target_value
+criterion = "Text mentions London or anything related to London."
+
+# ft_name = "wedding"
+# ft_id = 2822
+# target[ft_id] = target_value
+# criterion = "Text mentions weddings or anything related to weddings."
 
 
 # %%
