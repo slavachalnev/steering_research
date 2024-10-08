@@ -66,20 +66,26 @@ def main(data_path, is_2b=True):
         width=1200,         # Adjust the width as needed
         title_text='Steering Analysis - Product vs Scale',
         legend_title='Method',
-        showlegend=True
+        showlegend=True,
+        legend_font_size=14
     )
 
     # Update axis labels and fonts for all subplots
     fig.update_xaxes(title_text='Scale', row=rows, col=1)
-    fig.update_yaxes(title_text='Coherence * Score', row=1, col=1)
-    fig.update_annotations(font_size=12)
+    fig.update_xaxes(title_text='Scale', row=rows, col=2)
+    fig.update_xaxes(title_text='Scale', row=rows, col=3)
+    for row in range(1, rows + 1):
+        fig.update_yaxes(title_text='Coherence * Score', row=row, col=1)
 
-    # Save the figure as a PDF
+    # fig.update_yaxes(title_text='Coherence * Score', row=1, col=1)
+    fig.update_annotations(font_size=14)
+
+    # Save the figure as a JSON file
     if is_2b:
-        output_filename = "all_plots_2b.pdf"
+        output_filename = "all_plots_2b.json"
     else:
-        output_filename = "all_plots_9b.pdf"
-    pio.write_image(fig, output_filename, format="pdf")
+        output_filename = "all_plots_9b.json"
+    pio.write_json(fig, output_filename)
     print(f"Figure saved as {output_filename}")
 
     # Optionally, still show the figure in the notebook
@@ -117,19 +123,24 @@ def plot_specific_goals(data_path, is_2b=True):
 
     # Line styles for different metrics
     metric_styles = {
-        'product': {'dash': 'solid', 'width': 2},
+        'product': {'dash': 'solid', 'width': 3},
         'avg_coherence': {'dash': 'dot', 'width': 2},
         'avg_score': {'dash': 'dash', 'width': 2},
     }
 
     # Get default Plotly colors
-    import plotly.express as px
     default_colors = px.colors.qualitative.Plotly
     # Assign colors to metrics using default colors
     metric_colors = {
-        'product': default_colors[2],       # First color
+        'product': default_colors[2],       # Third color
         'avg_coherence': default_colors[1], # Second color
-        'avg_score': default_colors[0],     # Third color
+        'avg_score': default_colors[0],     # First color
+    }
+
+    legend_names = {
+        'product': 'product',
+        'avg_coherence': 'coherence',
+        'avg_score': 'score'
     }
 
     # Add data to each subplot
@@ -158,7 +169,8 @@ def plot_specific_goals(data_path, is_2b=True):
                     x=scales,
                     y=metric_values,
                     mode='lines',
-                    name=metric_name if idx == 0 else None,  # Show legend labels only once
+                    # name=metric_name if idx == 0 else None,  # Show legend labels only once
+                    name=legend_names[metric_name] if idx == 0 else None,
                     line=dict(
                         color=color,
                         dash=style.get('dash', 'solid'),
@@ -174,23 +186,24 @@ def plot_specific_goals(data_path, is_2b=True):
     fig.update_layout(
         height=450,  # Reduced height for less tall plots
         width=1200,  # Adjusted width for side by side plots
-        title_text='OptimisedSteer Metrics for Specific Goals',
+        title_text='OptimisedSteer Metrics for London and Wedding',
         legend_title='Metric',
-        showlegend=True
+        showlegend=True,
+        legend_font_size=16
     )
 
     # Update axis labels and fonts for all subplots
     for c in range(1, cols + 1):
         fig.update_xaxes(title_text='Scale', row=1, col=c, range=[0, 180])
         fig.update_yaxes(title_text='Value', row=1, col=c, range=[0, 1])  # Set y-axis range from 0 to 1
-    fig.update_annotations(font_size=14)
+    fig.update_annotations(font_size=16)
 
-    # Save the figure as a PDF
+    # Save the figure as a JSON file
     if is_2b:
-        output_filename = "London_wedding_optimised_metrics_2b.pdf"
+        output_filename = "London_wedding_optimised_metrics_2b.json"
     else:
-        output_filename = "London_wedding_optimised_metrics_9b.pdf"
-    pio.write_image(fig, output_filename, format="pdf")
+        output_filename = "London_wedding_optimised_metrics_9b.json"
+    pio.write_json(fig, output_filename)
     print(f"Figure saved as {output_filename}")
 
     # Optionally, show the figure in the notebook
@@ -199,10 +212,10 @@ def plot_specific_goals(data_path, is_2b=True):
 
 # %%
 if __name__ == "__main__":
-    # Call the original main function
     main(data_path="graph_data_all_methods_gemma-2-2b.json", is_2b=True)
-    
-    # Call the new function to plot specific goals with modifications
     plot_specific_goals(data_path="graph_data_all_methods_gemma-2-2b.json", is_2b=True)
+
+    # main(data_path="graph_data_all_methods_gemma-2-9b.json", is_2b=False)
+    # plot_specific_goals(data_path="graph_data_all_methods_gemma-2-9b.json", is_2b=False)
 
 # %%
