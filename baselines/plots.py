@@ -10,8 +10,8 @@ def main(data_path, is_2b=True):
     with open(data_path, 'r') as f:
         graph_data_list = json.load(f)
 
-    # Get the unique steering goals
-    steering_goals = sorted(set(data['steering_goal_name'] for data in graph_data_list))
+    # Get the unique steering goals and sort them case-insensitively
+    steering_goals = sorted(set(data['steering_goal_name'] for data in graph_data_list), key=str.lower)
 
     # Prepare a mapping from steering goal to its data
     data_by_goal = {goal: [] for goal in steering_goals}
@@ -107,8 +107,8 @@ def plot_specific_goals(data_path, is_2b=True):
         if data['steering_goal_name'] in goals_to_plot and data['method'] == 'OptimisedSteer'
     ]
 
-    # Get the unique steering goals (after filtering)
-    steering_goals = sorted(set(data['steering_goal_name'] for data in graph_data_list))
+    # Get the unique steering goals (after filtering) and sort them case-insensitively
+    steering_goals = sorted(set(data['steering_goal_name'] for data in graph_data_list), key=str.lower)
 
     # Prepare a mapping from steering goal to its data
     data_by_goal = {goal: [] for goal in steering_goals}
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     main(data_path="graph_data_all_methods_gemma-2-2b.json", is_2b=True)
     plot_specific_goals(data_path="graph_data_all_methods_gemma-2-2b.json", is_2b=True)
 
-    # main(data_path="graph_data_all_methods_gemma-2-9b.json", is_2b=False)
-    # plot_specific_goals(data_path="graph_data_all_methods_gemma-2-9b.json", is_2b=False)
+    main(data_path="graph_data_all_methods_gemma-2-9b.json", is_2b=False)
+    plot_specific_goals(data_path="graph_data_all_methods_gemma-2-9b.json", is_2b=False)
 
 # %%
