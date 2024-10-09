@@ -25,10 +25,11 @@ import einops
 #     # "effects/G2_2B_L12/random_5",
 # ]
 
-paths = [ # big model
-    "effects/G2_9B_L12/131k_from_0",
-    "effects/G2_9B_L12/131k_from_16k",
-    "effects/G2_9B_L12/131k_from_32k",
+paths = [  # big model
+    "../effects/G2_2B_L12/16k",
+    # "effects/G2_9B_L12/131k_from_0",
+    # "effects/G2_9B_L12/131k_from_16k",
+    # "effects/G2_9B_L12/131k_from_32k",
 ]
 
 features = []
@@ -40,6 +41,51 @@ for path in paths:
 
 features = torch.cat(features)
 effects = torch.cat(effects)
+
+
+# %%
+def check_feature_distributions():
+    # Define a threshold value
+    threshold = 0.4  # Adjust this value as needed
+
+    zeros = []
+    different = []
+    same = []
+    only_dense = []
+    for i in range(effects.shape[0]):
+        # Create a boolean mask for significant effects
+        significant_mask = effects[i] > threshold
+
+        if significant_mask.nonzero().squeeze().tolist() == []:
+            zeros.append([i, []])
+            continue
+        # Get indices of significant effects from the original list
+        indices = significant_mask.nonzero().squeeze().tolist()
+
+        # Ensure indices is always a list
+        if isinstance(indices, int):
+            indices = [indices]
+        elif isinstance(indices, torch.Tensor):
+            indices = indices.tolist()
+
+        # Sort indices by their corresponding effect values in descending order
+        indices.sort(key=lambda idx: effects[i][idx], reverse=True)
+        filter_features = [7507, 6810, 2620, 2009, 7517, 10957, 2291]
+        indices = list(filter(lambda idx: idx not in filter_features, indices))
+
+        if len(indices) == 0:
+            only_dense.append([i, []])
+        elif i not in indices:
+            different.append([i, indices])
+        else:
+            same.append([i, indices])
+
+    print("zeros:", len(zeros))
+    print("different:", len(different))
+    print("same:", len(same))
+    print("only_dense:", len(only_dense))
+    return zeros, different, same, only_dense
+
 
 # %%
 
@@ -66,8 +112,6 @@ fig = px.histogram(effects_abs)
 fig.show()
 
 
-
-
 # %%
 # feature id 115
 effects_abs[115]
@@ -79,5 +123,3 @@ print(bottom_10)
 print(effects_abs[bottom_10])
 
 # %%
-
-
