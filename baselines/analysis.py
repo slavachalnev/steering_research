@@ -81,16 +81,16 @@ def load_sae_steer(path):
 def single_step_steer(adapter, target, bias_scale=1):
     # used for optimised steering
     steer_vec = adapter.W @ target.to(device)
-    steer_vec = steer_vec / torch.norm(steer_vec)
+    steer_vec = steer_vec / torch.norm(steer_vec) ######
     bias_vec = adapter.W @ adapter.b
-    bias_vec = bias_vec / torch.norm(bias_vec)
+    bias_vec = bias_vec / torch.norm(bias_vec) ######
     bias_vec = bias_vec * bias_scale
     steer = steer_vec - bias_vec
     steer = steer / torch.norm(steer, dim=-1, keepdim=True)
     return steer
 
 
-def load_optimised_steer(path):
+def load_optimised_steer(path, big_model=False):
     with open(os.path.join(path, "optimised_steer.json"), 'r') as f:
         config = json.load(f)
     
@@ -99,7 +99,10 @@ def load_optimised_steer(path):
     sae = load_sae_model(config)
 
     adapter = LinearAdapter(sae.W_enc.shape[0], sae.W_enc.shape[1])
-    adapter.load_state_dict(torch.load(f"adapter_layer_{layer}.pt"))
+    if big_model:
+        adapter.load_state_dict(torch.load(f"adapter_9b_layer_{layer}.pt"))
+    else:
+        adapter.load_state_dict(torch.load(f"adapter_layer_{layer}.pt"))
     adapter.to(device)
 
     target = torch.zeros(adapter.W.shape[1]).to(device)
@@ -242,20 +245,36 @@ if __name__ == "__main__":
 if __name__ == "__main__":
 
     paths = [
-        "steer_cfgs/gemma2/anger",
-        "steer_cfgs/gemma2/christian_evangelist",
-        "steer_cfgs/gemma2/conspiracy",
-        "steer_cfgs/gemma2/french",
-        "steer_cfgs/gemma2/london",
-        "steer_cfgs/gemma2/love",
-        "steer_cfgs/gemma2/praise",
-        "steer_cfgs/gemma2/want_to_die",
-        "steer_cfgs/gemma2/wedding",
+        # "steer_cfgs/gemma2/anger",
+        # "steer_cfgs/gemma2/christian_evangelist",
+        # "steer_cfgs/gemma2/conspiracy",
+        # "steer_cfgs/gemma2/french",
+        # "steer_cfgs/gemma2/london",
+        # "steer_cfgs/gemma2/love",
+        # "steer_cfgs/gemma2/praise",
+        # "steer_cfgs/gemma2/want_to_die",
+        # "steer_cfgs/gemma2/wedding",
 
         # "steer_cfgs/gemma2/london_65k",
         # "steer_cfgs/gemma2/GGB_65k",
 
         # "steer_cfgs/gemma2/citations",
+
+        # "steer_cfgs/gemma2-9b/anger",
+        # "steer_cfgs/gemma2-9b/christian_evangelist",
+        # "steer_cfgs/gemma2-9b/conspiracy",
+        # "steer_cfgs/gemma2-9b/french",
+        # "steer_cfgs/gemma2-9b/london",
+        # "steer_cfgs/gemma2-9b/love",
+        # "steer_cfgs/gemma2-9b/praise",
+        # "steer_cfgs/gemma2-9b/want_to_die",
+        # "steer_cfgs/gemma2-9b/wedding",
+
+        "steer_cfgs/extra_g2/immunology",
+        "steer_cfgs/extra_g2/bonus_preview_extra",
+        "steer_cfgs/extra_g2/months",
+        "steer_cfgs/extra_g2/say",
+
     ]
 
     results = []
@@ -263,15 +282,15 @@ if __name__ == "__main__":
 
     for path in paths:
         print(path)
-        # Activation Steering
-        print("Activation Steering")
-        pos_examples, neg_examples, val_examples, layer = load_act_steer(path)
-        steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
-        steer = steer / torch.norm(steer, dim=-1, keepdim=True)
-        hp = f"blocks.{layer}.hook_resid_post"
-        result, graph_data = analyse_steer(model, steer, hp, path, method='ActSteer')
-        results.append(result)
-        graph_data_list.append(graph_data)
+        # # Activation Steering
+        # print("Activation Steering")
+        # pos_examples, neg_examples, val_examples, layer = load_act_steer(path)
+        # steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
+        # steer = steer / torch.norm(steer, dim=-1, keepdim=True)
+        # hp = f"blocks.{layer}.hook_resid_post"
+        # result, graph_data = analyse_steer(model, steer, hp, path, method='ActSteer')
+        # results.append(result)
+        # graph_data_list.append(graph_data)
 
         # SAE Steering
         print("SAE Steering")
@@ -281,29 +300,29 @@ if __name__ == "__main__":
         results.append(result)
         graph_data_list.append(graph_data)
 
-        # Optimized Steering
-        print("Optimized Steering")
-        steer, hp, layer = load_optimised_steer(path)
-        steer = steer.to(device)
-        result, graph_data = analyse_steer(model, steer, hp, path, method='OptimisedSteer')
-        results.append(result)
-        graph_data_list.append(graph_data)
+        # # Optimized Steering
+        # print("Optimized Steering")
+        # steer, hp, layer = load_optimised_steer(path, big_model=big_model)
+        # steer = steer.to(device)
+        # result, graph_data = analyse_steer(model, steer, hp, path, method='OptimisedSteer')
+        # results.append(result)
+        # graph_data_list.append(graph_data)
 
-        # Rotation Steering
-        print("Rotation Steering")
-        steer, hp, layer = load_rotation_steer(path)
-        steer = steer.to(device)
-        result, graph_data = analyse_steer(model, steer, hp, path, method='RotationSteer')
-        results.append(result)
-        graph_data_list.append(graph_data)
+        # # Rotation Steering
+        # print("Rotation Steering")
+        # steer, hp, layer = load_rotation_steer(path)
+        # steer = steer.to(device)
+        # result, graph_data = analyse_steer(model, steer, hp, path, method='RotationSteer')
+        # results.append(result)
+        # graph_data_list.append(graph_data)
 
-    # Write the results to a JSON file
-    with open(f'steering_results_{model_name}.json', 'w') as f:
-        json.dump(results, f, indent=2)
+    # # Write the results to a JSON file
+    # with open(f'steering_results_{model_name}.json', 'w') as f:
+    #     json.dump(results, f, indent=2)
 
-    # Write the graph data to a JSON file
-    with open(f'graph_data_all_methods_{model_name}.json', 'w') as f:
-        json.dump(graph_data_list, f, indent=2)
+    # # Write the graph data to a JSON file
+    # with open(f'graph_data_all_methods_{model_name}.json', 'w') as f:
+    #     json.dump(graph_data_list, f, indent=2)
 
 # # %%
 # if __name__ == "__main__":

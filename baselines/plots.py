@@ -30,9 +30,9 @@ def main(data_path, is_2b=True):
 
     # Prepare colors for different methods using Plotly's default colors
     method_colors = {
-        'ActSteer': default_colors[0],       # Typically blue
+        'CAA': default_colors[0],       # Typically blue
         'SAE': default_colors[1],            # Typically red/orange
-        'OptimisedSteer': default_colors[2], # Typically green
+        'SAE-TS': default_colors[2], # Typically green
     }
 
     # Add data to each subplot
@@ -45,6 +45,13 @@ def main(data_path, is_2b=True):
             method = method_data['method']
             if method == 'RotationSteer':
                 continue  # Skip RotationSteer
+            
+            # Map the method names
+            if method == 'ActSteer':
+                method = 'CAA'
+            elif method == 'OptimisedSteer':
+                method = 'SAE-TS'
+            
             scales = method_data['scales']
             product = method_data['product']
             fig.add_trace(
@@ -78,7 +85,7 @@ def main(data_path, is_2b=True):
         fig.update_yaxes(title_text='Coherence * Score', row=row, col=1)
 
     # fig.update_yaxes(title_text='Coherence * Score', row=1, col=1)
-    fig.update_annotations(font_size=14)
+    fig.update_annotations(font_size=18)
 
     # Save the figure as a JSON file
     if is_2b:
@@ -186,7 +193,7 @@ def plot_specific_goals(data_path, is_2b=True):
     fig.update_layout(
         height=450,  # Reduced height for less tall plots
         width=1200,  # Adjusted width for side by side plots
-        title_text='OptimisedSteer Metrics for London and Wedding',
+        title_text='Targeted Steering Metrics for London and Wedding',
         legend_title='Metric',
         showlegend=True,
         legend_font_size=16
@@ -194,9 +201,9 @@ def plot_specific_goals(data_path, is_2b=True):
 
     # Update axis labels and fonts for all subplots
     for c in range(1, cols + 1):
-        fig.update_xaxes(title_text='Scale', row=1, col=c, range=[0, 180])
-        fig.update_yaxes(title_text='Value', row=1, col=c, range=[0, 1])  # Set y-axis range from 0 to 1
-    fig.update_annotations(font_size=16)
+        fig.update_xaxes(title_text='Scale', row=1, col=c, range=[0, 180], tickfont=dict(size=14), title_font=dict(size=16))
+        fig.update_yaxes(title_text='Value', row=1, col=c, range=[0, 1], tickfont=dict(size=14), title_font=dict(size=16))
+    fig.update_annotations(font_size=18)
 
     # Save the figure as a JSON file
     if is_2b:

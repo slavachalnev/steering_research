@@ -8,29 +8,29 @@ import einops
 
 
 # %%
-# paths = [ # small model
-#     "effects/G2_2B_L12/65k_from_0",
-#     "effects/G2_2B_L12/65k_from_10k",
-#     "effects/G2_2B_L12/65k_from_20k",
-#     "effects/G2_2B_L12/65k_from_30k",
-#     "effects/G2_2B_L12/65k_from_40k",
+paths = [ # small model
+    # "effects/G2_2B_L12/65k_from_0",
+    # "effects/G2_2B_L12/65k_from_10k",
+    # "effects/G2_2B_L12/65k_from_20k",
+    # "effects/G2_2B_L12/65k_from_30k",
+    # "effects/G2_2B_L12/65k_from_40k",
 
-#     # "effects/G2_2B_L12/16k_from_0",
-#     # "effects/G2_2B_L12/sample_and_combine_16k",
+    "effects/G2_2B_L12/16k_from_0",
+    # "effects/G2_2B_L12/sample_and_combine_16k",
 
-#     # "effects/G2_2B_L12/random",
-#     # "effects/G2_2B_L12/random_2",
-#     # "effects/G2_2B_L12/random_3",
-#     # "effects/G2_2B_L12/random_4",
-#     # "effects/G2_2B_L12/random_5",
-# ]
-
-paths = [  # big model
-    "../effects/G2_2B_L12/16k",
-    # "effects/G2_9B_L12/131k_from_0",
-    # "effects/G2_9B_L12/131k_from_16k",
-    # "effects/G2_9B_L12/131k_from_32k",
+    # "effects/G2_2B_L12/random",
+    # "effects/G2_2B_L12/random_2",
+    # "effects/G2_2B_L12/random_3",
+    # "effects/G2_2B_L12/random_4",
+    # "effects/G2_2B_L12/random_5",
 ]
+
+# paths = [  # big model
+#     "../effects/G2_2B_L12/16k",
+#     # "effects/G2_9B_L12/131k_from_0",
+#     # "effects/G2_9B_L12/131k_from_16k",
+#     # "effects/G2_9B_L12/131k_from_32k",
+# ]
 
 features = []
 effects = []
@@ -121,5 +121,30 @@ effects_abs[115]
 bottom_10 = effects_abs.argsort()[:10]
 print(bottom_10)
 print(effects_abs[bottom_10])
+
+# %%
+
+# load base acts
+base_acts = torch.load("base_acts_2b.pt").to('cpu')
+print(base_acts.shape)
+
+# %%
+
+# wedding
+wedding_effects = effects[4230] / (base_acts + 1e-2)
+print(torch.topk(wedding_effects, k=10))
+
+# %%
+
+# facilitate
+facilitate_effects = effects[129] / (base_acts + 1e-2)
+print(torch.topk(facilitate_effects, k=10))
+
+# %%
+
+# months
+months_effects = effects[12904]# / (base_acts + 1e-2)
+print(torch.topk(months_effects, k=10))
+
 
 # %%

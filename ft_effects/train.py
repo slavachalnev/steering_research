@@ -162,12 +162,12 @@ if __name__ == "__main__":
     adapter.to(device)
     train(15, lr=2e-4)
 
-# # %%
+# %%
 
-    # if BIG_MODEL:
-    #     torch.save(adapter.state_dict(), "linear_adapter_9B.pt")
-    # else:
-    #     torch.save(adapter.state_dict(), "linear_adapter_2B.pt")
+# if BIG_MODEL:
+#     torch.save(adapter.state_dict(), "adapter_9b_layer_12.pt")
+# else:
+#     torch.save(adapter.state_dict(), "adapter_2b_layer_12.pt")
 # %%
 
 def find_optimal_steer(adapter, target, d_model,
