@@ -89,31 +89,51 @@ def single_step_steer(adapter, target, bias_scale=1):
     steer = steer / torch.norm(steer, dim=-1, keepdim=True)
     return steer
 
+@torch.no_grad()
+def pinverse_steer(adapter, target, target_scale=1):
+    target = target / torch.norm(target)
+    target = target * target_scale
+    target = target.to(device)
+    W_pinv = torch.linalg.pinv(adapter.W)
+    x_optimal = (target - adapter.b) @ W_pinv
+    return x_optimal
+    
 
 def load_optimised_steer(path, big_model=False):
     with open(os.path.join(path, "optimised_steer.json"), 'r') as f:
         config = json.load(f)
-    
     layer = config['layer']
-
     sae = load_sae_model(config)
-
     adapter = LinearAdapter(sae.W_enc.shape[0], sae.W_enc.shape[1])
     if big_model:
         adapter.load_state_dict(torch.load(f"adapter_9b_layer_{layer}.pt"))
     else:
         adapter.load_state_dict(torch.load(f"adapter_layer_{layer}.pt"))
     adapter.to(device)
-
     target = torch.zeros(adapter.W.shape[1]).to(device)
     for ft_id, ft_scale in config['features']:
         target[ft_id] = ft_scale
 
     vec = single_step_steer(adapter, target, bias_scale=1)
+    return vec, config['hp'], layer
 
-    hp = config['hp']
-    return vec, hp, layer
+def load_pinv_steer(path, big_model=False):
+    with open(os.path.join(path, "optimised_steer.json"), 'r') as f:
+        config = json.load(f)
+    layer = config['layer']
+    sae = load_sae_model(config)
+    adapter = LinearAdapter(sae.W_enc.shape[0], sae.W_enc.shape[1])
+    if big_model:
+        adapter.load_state_dict(torch.load(f"adapter_9b_layer_{layer}.pt"))
+    else:
+        adapter.load_state_dict(torch.load(f"adapter_layer_{layer}.pt"))
+    adapter.to(device)
+    target = torch.zeros(adapter.W.shape[1]).to(device)
+    for ft_id, ft_scale in config['features']:
+        target[ft_id] = ft_scale
 
+    vec = pinverse_steer(adapter, target, target_scale=1)
+    return vec, config['hp'], layer
 
 def load_rotation_steer(path):
     # Like optimised steer, same config, but use rotation matrix
@@ -245,15 +265,15 @@ if __name__ == "__main__":
 if __name__ == "__main__":
 
     paths = [
-        # "steer_cfgs/gemma2/anger",
-        # "steer_cfgs/gemma2/christian_evangelist",
-        # "steer_cfgs/gemma2/conspiracy",
-        # "steer_cfgs/gemma2/french",
-        # "steer_cfgs/gemma2/london",
-        # "steer_cfgs/gemma2/love",
-        # "steer_cfgs/gemma2/praise",
-        # "steer_cfgs/gemma2/want_to_die",
-        # "steer_cfgs/gemma2/wedding",
+        "steer_cfgs/gemma2/anger",
+        "steer_cfgs/gemma2/christian_evangelist",
+        "steer_cfgs/gemma2/conspiracy",
+        "steer_cfgs/gemma2/french",
+        "steer_cfgs/gemma2/london",
+        "steer_cfgs/gemma2/love",
+        "steer_cfgs/gemma2/praise",
+        "steer_cfgs/gemma2/want_to_die",
+        "steer_cfgs/gemma2/wedding",
 
         # "steer_cfgs/gemma2/london_65k",
         # "steer_cfgs/gemma2/GGB_65k",
@@ -270,10 +290,10 @@ if __name__ == "__main__":
         # "steer_cfgs/gemma2-9b/want_to_die",
         # "steer_cfgs/gemma2-9b/wedding",
 
-        "steer_cfgs/extra_g2/immunology",
-        "steer_cfgs/extra_g2/bonus_preview_extra",
-        "steer_cfgs/extra_g2/months",
-        "steer_cfgs/extra_g2/say",
+        # "steer_cfgs/extra_g2/immunology",
+        # "steer_cfgs/extra_g2/bonus_preview_extra",
+        # "steer_cfgs/extra_g2/months",
+        # "steer_cfgs/extra_g2/say",
 
     ]
 
@@ -282,15 +302,15 @@ if __name__ == "__main__":
 
     for path in paths:
         print(path)
-        # # Activation Steering
-        # print("Activation Steering")
-        # pos_examples, neg_examples, val_examples, layer = load_act_steer(path)
-        # steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
-        # steer = steer / torch.norm(steer, dim=-1, keepdim=True)
-        # hp = f"blocks.{layer}.hook_resid_post"
-        # result, graph_data = analyse_steer(model, steer, hp, path, method='ActSteer')
-        # results.append(result)
-        # graph_data_list.append(graph_data)
+        # Activation Steering
+        print("Activation Steering")
+        pos_examples, neg_examples, val_examples, layer = load_act_steer(path)
+        steer = get_activation_steering(model, pos_examples, neg_examples, device=device, layer=layer)
+        steer = steer / torch.norm(steer, dim=-1, keepdim=True)
+        hp = f"blocks.{layer}.hook_resid_post"
+        result, graph_data = analyse_steer(model, steer, hp, path, method='ActSteer')
+        results.append(result)
+        graph_data_list.append(graph_data)
 
         # SAE Steering
         print("SAE Steering")
@@ -300,29 +320,38 @@ if __name__ == "__main__":
         results.append(result)
         graph_data_list.append(graph_data)
 
-        # # Optimized Steering
-        # print("Optimized Steering")
-        # steer, hp, layer = load_optimised_steer(path, big_model=big_model)
-        # steer = steer.to(device)
-        # result, graph_data = analyse_steer(model, steer, hp, path, method='OptimisedSteer')
-        # results.append(result)
-        # graph_data_list.append(graph_data)
+        # Optimized Steering
+        print("Optimized Steering")
+        steer, hp, layer = load_optimised_steer(path, big_model=big_model)
+        steer = steer.to(device)
+        result, graph_data = analyse_steer(model, steer, hp, path, method='OptimisedSteer')
+        results.append(result)
+        graph_data_list.append(graph_data)
 
-        # # Rotation Steering
-        # print("Rotation Steering")
-        # steer, hp, layer = load_rotation_steer(path)
-        # steer = steer.to(device)
-        # result, graph_data = analyse_steer(model, steer, hp, path, method='RotationSteer')
-        # results.append(result)
-        # graph_data_list.append(graph_data)
+        # Pinverse Steering
+        print("Pinverse Steering")
+        steer, hp, layer = load_pinv_steer(path, big_model=big_model)
+        steer = steer.to(device)
+        result, graph_data = analyse_steer(model, steer, hp, path, method='PinverseSteer')
+        print("max_product:", result['max_product'])
+        results.append(result)
+        graph_data_list.append(graph_data)
 
-    # # Write the results to a JSON file
-    # with open(f'steering_results_{model_name}.json', 'w') as f:
-    #     json.dump(results, f, indent=2)
+        # Rotation Steering
+        print("Rotation Steering")
+        steer, hp, layer = load_rotation_steer(path)
+        steer = steer.to(device)
+        result, graph_data = analyse_steer(model, steer, hp, path, method='RotationSteer')
+        results.append(result)
+        graph_data_list.append(graph_data)
 
-    # # Write the graph data to a JSON file
-    # with open(f'graph_data_all_methods_{model_name}.json', 'w') as f:
-    #     json.dump(graph_data_list, f, indent=2)
+    # Write the results to a JSON file
+    with open(f'steering_results_{model_name}.json', 'w') as f:
+        json.dump(results, f, indent=2)
+
+    # Write the graph data to a JSON file
+    with open(f'graph_data_all_methods_{model_name}.json', 'w') as f:
+        json.dump(graph_data_list, f, indent=2)
 
 # # %%
 # if __name__ == "__main__":

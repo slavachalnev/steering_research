@@ -34,11 +34,18 @@ def main(results_json, is_2b=True):
     
     # Define a custom color map using Plotly-like colors
     color_map = {
-        'ActSteer': '#636EFA',  # Plotly's default blue
+        'CAA': '#636EFA',  # Plotly's default blue
         'SAE': '#EF553B',        # Plotly's default red
-        'OptimisedSteer': '#00CC96',  # Plotly's default green
+        'SAE-TS': '#00CC96',  # Plotly's default green
         'RotationSteer': '#AB63FA'  # Plotly's default purple
     }
+
+    # Update method names in the DataFrame
+    method_name_map = {
+        'ActSteer': 'CAA',
+        'OptimisedSteer': 'SAE-TS'
+    }
+    df_summary['method'] = df_summary['method'].replace(method_name_map)
     
     # Sort df_summary by steering_goal for consistent ordering in the plot, ignoring case
     df_summary_sorted = df_summary.sort_values('steering_goal', key=lambda x: x.str.lower())

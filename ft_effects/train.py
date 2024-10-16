@@ -61,7 +61,7 @@ class HybridAdapter(nn.Module):
         
 
 
-def train(num_epochs, lr=1e-4, weight_decay=1e-5):
+def train(num_epochs, lr=1e-4):
     if BIG_MODEL:
         paths = [
             "effects/G2_9B_L12/131k_from_0",
@@ -110,7 +110,7 @@ def train(num_epochs, lr=1e-4, weight_decay=1e-5):
     dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=64, shuffle=False)
 
-    opt = torch.optim.AdamW(adapter.parameters(), lr=lr, weight_decay=weight_decay)
+    opt = torch.optim.Adam(adapter.parameters(), lr=lr)
 
     scheduler = CosineAnnealingLR(opt, T_max=num_epochs)
 
