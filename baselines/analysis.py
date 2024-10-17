@@ -194,9 +194,12 @@ def analyse_steer(model, steer, hp, path, method='activation_steering'):
     steering_goal_name = criteria[0].get('name', 'Unknown')
 
     all_texts = []
-
     avg_score = []
     avg_coh = []
+    individual_scores = []
+    individual_coherences = []
+    individual_products = []
+
     for scale in tqdm(scales):
         texts = steer_model(model, steer, hp, prompts[0], scale=scale)
         all_texts.append((scale, texts))
@@ -211,6 +214,14 @@ def analyse_steer(model, steer, hp, path, method='activation_steering'):
         score = [(item - 1) / 9 for item in score]
         coherence = [item['score'] for item in coherence]
         coherence = [(item - 1) / 9 for item in coherence]
+
+        # Compute the product for each sample. This is for variance analysis.
+        products = [s * c for s, c in zip(score, coherence)]
+
+        individual_scores.append(score)
+        individual_coherences.append(coherence)
+        individual_products.append(products)
+
         avg_score.append(sum(score) / len(score))
         avg_coh.append(sum(coherence) / len(coherence))
 
@@ -244,9 +255,12 @@ def analyse_steer(model, steer, hp, path, method='activation_steering'):
         'scales': scales,
         'avg_coherence': avg_coh,
         'avg_score': avg_score,
-        'product': product
+        'product': product,
+        'individual_scores': individual_scores,
+        'individual_coherences': individual_coherences,
+        'individual_products': individual_products
     }
-
+    print(f"Max product: {max_product} at scale {max_scale}")
     return result, graph_data
 
 # %%
@@ -333,7 +347,6 @@ if __name__ == "__main__":
         steer, hp, layer = load_pinv_steer(path, big_model=big_model)
         steer = steer.to(device)
         result, graph_data = analyse_steer(model, steer, hp, path, method='PinverseSteer')
-        print("max_product:", result['max_product'])
         results.append(result)
         graph_data_list.append(graph_data)
 

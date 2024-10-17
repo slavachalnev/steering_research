@@ -45,6 +45,8 @@ def main(data_path, is_2b=True):
             method = method_data['method']
             if method == 'RotationSteer':
                 continue  # Skip RotationSteer
+            if method == 'PinverseSteer':
+                continue  # Skip PinverseSteer
             
             # Map the method names
             if method == 'ActSteer':
@@ -71,7 +73,7 @@ def main(data_path, is_2b=True):
     fig.update_layout(
         height=300 * rows,  # Adjust the height as needed
         width=1200,         # Adjust the width as needed
-        title_text='Steering Analysis - Product vs Scale',
+        # title_text='Steering Analysis - Product vs Scale',
         legend_title='Method',
         showlegend=True,
         legend_font_size=14
@@ -193,7 +195,7 @@ def plot_specific_goals(data_path, is_2b=True):
     fig.update_layout(
         height=450,  # Reduced height for less tall plots
         width=1200,  # Adjusted width for side by side plots
-        title_text='Targeted Steering Metrics for London and Wedding',
+        # title_text='Targeted Steering Metrics for London and Wedding',
         legend_title='Metric',
         showlegend=True,
         legend_font_size=16
