@@ -4,13 +4,12 @@
 		"Choosing wedding dress",
 		"Sending invitations",
 		"Booking wedding venue",
-		"Selecting wedding cake",
 		"Writing wedding vows",
 		"Hiring wedding photographer",
-		"Arranging wedding flowers",
-		"Organizing wedding reception",
-		"Picking wedding rings",
-		"I'm going to the wedding"
+		"I'm going to the wedding",
+		"Walk down the aisle",
+		"Save the date",
+		"They got married"
 	],
 	"neg": [
 		"Discussing world politics",
@@ -19,11 +18,10 @@
 		"Playing video games",
 		"Studying ancient history",
 		"Exercising at the gym",
-		"Reading mystery novels",
-		"Fixing car engines",
-		"Birdwatching in parks",
-		"Learning new languages",
-		"I'm going to the shops"
+		"I'm going to the shops",
+		"Walk down the street",
+		"Save the planet",
+		"They went to the cinema"
 	],
 	"layer": 12,
 	"hp": "blocks.12.hook_resid_post"

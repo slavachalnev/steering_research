@@ -5,15 +5,23 @@
 		"The media is spreading disinformation to manipulate public opinion",
 		"Whistleblowers are being silenced to cover up a massive scandal",
 		"A shadow government is pulling the strings behind the scenes",
-		"The New World Order is implementing their sinister plan"
+		"The New World Order is implementing their sinister plan",
+		"The elites are controlling everything",
+		"The deep state",
+		"Lizzard people control the government",
+		"Connect the dots."
 	],
 	"neg": [
 		"Reputable sources have fact-checked and debunked that claim",
-		"Scientific evidence contradicts those conspiracy theories",
 		"Transparency in government helps prevent corruption and abuse",
-		"Critical thinking skills are essential for evaluating information",
-		"Occam's razor suggests a simpler explanation is more likely",
-		"Peer-reviewed studies provide reliable, evidence-based conclusions"
+		"Peer-reviewed studies provide reliable, evidence-based conclusions",
+		"The weather forecast says it might rain tomorrow",
+		"My phone battery doesn't last as long as it used to",
+		"That new movie got good reviews",
+		"My friend got a job in government",
+		"He's at school today",
+		"I plan to stop by the store",
+		"Let's play secret santa"
 	],
 	"layer": 12
 }

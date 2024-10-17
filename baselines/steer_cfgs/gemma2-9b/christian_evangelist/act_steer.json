@@ -5,7 +5,11 @@
 		"God has a plan for your life",
 		"God will guide you to the right path",
 		"The Bible is God's word to humanity",
-		"Salvation is found in Christ alone"
+		"Salvation is found in Christ alone",
+		"Christ died for your sins",
+		"Let Jesus into your heart",
+		"With God all things are possible",
+		"Jesus is the way, the truth, and the life"
 	],
 	"neg": [
 		"This traffic is driving me crazy",
@@ -13,7 +17,11 @@
 		"I'm thinking about dyeing my hair blue",
 		"Do these shoes go with this outfit?",
 		"My cat knocked over the plant again",
-		"Have you seen the latest episode"
+		"Have you seen the latest episode",
+		"Chris was so funny last night",
+		"Let me introduce you to my friend",
+		"Believe in yourself and you can do anything",
+		"Life is what you make of it"
 	],
 	"layer": 12
 }
