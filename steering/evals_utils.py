@@ -77,8 +77,9 @@ def multi_criterion_evaluation(
         model="gpt-4o-mini",
         verbose=False,
         filter_errors=True,
+        print_errors=False,
         batch_size=1000,
-        timeout=10,
+        timeout=20,
         ):
     repeated_completions = completions * len(criterions)
     repeated_criteria = []
@@ -107,15 +108,23 @@ def multi_criterion_evaluation(
     if not filter_errors:
         return reshaped_results
     
-    # Filter out error responses
+    # Filter out error responses and collect error statistics
     filtered_results = []
+    error_counts = {}
     for criterion_results in reshaped_results:
         valid_criterion_results = []
         for result in criterion_results:
             if "error" not in result:
                 valid_criterion_results.append(result)
+            else:
+                error_msg = result.get("error", "Unknown error")
+                error_counts[error_msg] = error_counts.get(error_msg, 0) + 1
         filtered_results.append(valid_criterion_results)
-
+    
+    if print_errors and error_counts:
+        error_summary = ", ".join([f"{count} '{error_msg}' errors" for error_msg, count in error_counts.items()])
+        print(f"Errors occurred during evaluation: {error_summary}")
+    
     return filtered_results
 
 

@@ -208,6 +208,7 @@ def analyse_steer(model, steer, hp, path, method='activation_steering'):
             texts,
             [criteria[0]['score'], criteria[0]['coherence']],
             prompt=prompts[0],
+            print_errors=True,
         )
 
         score = [item['score'] for item in score]
