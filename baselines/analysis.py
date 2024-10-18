@@ -201,7 +201,7 @@ def analyse_steer(model, steer, hp, path, method='activation_steering'):
     individual_products = []
 
     for scale in tqdm(scales):
-        texts = steer_model(model, steer, hp, prompts[0], scale=scale)
+        texts = steer_model(model, steer, hp, prompts[0], scale=scale, n_samples=256)
         all_texts.append((scale, texts))
 
         score, coherence = multi_criterion_evaluation(
