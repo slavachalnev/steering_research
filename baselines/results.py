@@ -6,7 +6,7 @@ import os
 
 
 
-def main(results_json, is_2b=True):
+def main(results_json, is_2b=True, name=""):
     with open(results_json, 'r') as f:
         data = json.load(f)
     df = pd.DataFrame(data)
@@ -70,9 +70,9 @@ def main(results_json, is_2b=True):
     
     # Save the plot as a PDF file
     if is_2b:
-        output_filename = "steering_results_plot_2b.pdf"
+        output_filename = f"steering_results_plot_2b{name}.pdf"
     else:
-        output_filename = "steering_results_plot_9b.pdf"
+        output_filename = f"steering_results_plot_9b{name}.pdf"
     fig.write_image(output_filename)
     print(f"Plot saved as {output_filename}")
     
@@ -80,6 +80,8 @@ def main(results_json, is_2b=True):
     fig.show()
 # %%
 if __name__ == "__main__":
-    main('steering_results_gemma-2-2b.json', is_2b=True)
+    # name=""
+    name="_surprisingly"
+    main(f'steering_results_gemma-2-2b{name}.json', is_2b=True, name=name)
     # main('steering_results_london.json')
 # %%

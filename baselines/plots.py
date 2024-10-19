@@ -6,7 +6,7 @@ import plotly.io as pio
 import plotly.express as px
 
 # %%
-def main(data_path, is_2b=True):
+def main(data_path, is_2b=True, name=""):
     with open(data_path, 'r') as f:
         graph_data_list = json.load(f)
 
@@ -91,9 +91,9 @@ def main(data_path, is_2b=True):
 
     # Save the figure as a JSON file
     if is_2b:
-        output_filename = "all_plots_2b.json"
+        output_filename = f"all_plots_2b{name}.json"
     else:
-        output_filename = "all_plots_9b.json"
+        output_filename = f"all_plots_9b{name}.json"
     pio.write_json(fig, output_filename)
     print(f"Figure saved as {output_filename}")
 
@@ -102,7 +102,7 @@ def main(data_path, is_2b=True):
 
 
 # %%
-def plot_specific_goals(data_path, is_2b=True):
+def plot_specific_goals(data_path, is_2b=True, name=""):
     # Define the specific goals to plot
     goals_to_plot = ["London", "wedding"]
 
@@ -209,9 +209,9 @@ def plot_specific_goals(data_path, is_2b=True):
 
     # Save the figure as a JSON file
     if is_2b:
-        output_filename = "London_wedding_optimised_metrics_2b.json"
+        output_filename = f"London_wedding_optimised_metrics_2b{name}.json"
     else:
-        output_filename = "London_wedding_optimised_metrics_9b.json"
+        output_filename = f"London_wedding_optimised_metrics_9b{name}.json"
     pio.write_json(fig, output_filename)
     print(f"Figure saved as {output_filename}")
 
@@ -221,10 +221,13 @@ def plot_specific_goals(data_path, is_2b=True):
 
 # %%
 if __name__ == "__main__":
-    main(data_path="graph_data_all_methods_gemma-2-2b.json", is_2b=True)
-    plot_specific_goals(data_path="graph_data_all_methods_gemma-2-2b.json", is_2b=True)
+    name=""
+    # name="_surprisingly"
 
-    main(data_path="graph_data_all_methods_gemma-2-9b.json", is_2b=False)
-    plot_specific_goals(data_path="graph_data_all_methods_gemma-2-9b.json", is_2b=False)
+    main(data_path=f"graph_data_all_methods_gemma-2-2b{name}.json", is_2b=True, name=name)
+    plot_specific_goals(data_path=f"graph_data_all_methods_gemma-2-2b{name}.json", is_2b=True, name=name)
+
+    main(data_path="graph_data_all_methods_gemma-2-9b.json", is_2b=False, name=name)
+    plot_specific_goals(data_path="graph_data_all_methods_gemma-2-9b.json", is_2b=False, name=name)
 
 # %%

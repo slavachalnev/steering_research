@@ -69,7 +69,6 @@ def evaluate_completions(
     
     return asyncio.run(evaluate_all())
 
-
 def multi_criterion_evaluation(
         completions: list[str],
         criterions: list[str],
@@ -86,16 +85,31 @@ def multi_criterion_evaluation(
     for criterion in criterions:
         repeated_criteria.extend([criterion] * len(completions))
     
+    async def retry_evaluate(completion, criterion, prompt, client, model, verbose, timeout, max_retries=1):
+        attempts = 0
+        while attempts <= max_retries:
+            result = await evaluate_with_timeout(completion, criterion, prompt, client, model, verbose, timeout)
+            if "error" not in result:
+                return result
+            elif attempts == max_retries:
+                return result
+            elif result.get("error") == "Timeout":
+                attempts += 1
+            else:
+                # For other errors, don't retry
+                return result
+
     async def evaluate_all():
         tasks = [
-            evaluate_with_timeout(completion, criterion, prompt, client, model, verbose, timeout)
+            retry_evaluate(completion, criterion, prompt, client, model, verbose, timeout, max_retries=1)
             for completion, criterion in zip(repeated_completions, repeated_criteria)
         ]
-        # chunk tasks into batches
-        chunked_tasks = [tasks[i:i+batch_size] for i in range(0, len(tasks), batch_size)]
+        # Run tasks in batches
         results = []
-        for chunk in chunked_tasks:
-            results.extend(await asyncio.gather(*chunk))
+        for i in range(0, len(tasks), batch_size):
+            chunk = tasks[i:i+batch_size]
+            chunk_results = await asyncio.gather(*chunk)
+            results.extend(chunk_results)
         return results
     
     results = asyncio.run(evaluate_all())
@@ -126,6 +140,7 @@ def multi_criterion_evaluation(
         print(f"Errors occurred during evaluation: {error_summary}")
     
     return filtered_results
+
 
 
 async def run_battle(text_1, text_2, criterion, prompt, client, model):

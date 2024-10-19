@@ -187,8 +187,12 @@ def analyse_steer(model, steer, hp, path, method='activation_steering'):
     scales = list(range(0, 320, 20))
     with open(os.path.join(path, "criteria.json"), 'r') as f:
         criteria = json.load(f)
-    with open(os.path.join(path, "prompts.json"), 'r') as f:
-        prompts = json.load(f)
+
+    if default_prompt is not None:
+        prompt = default_prompt
+    else:
+        with open(os.path.join(path, "prompts.json"), 'r') as f:
+            prompt = json.load(f)[0]
 
     # Read the steering goal name from criteria.json
     steering_goal_name = criteria[0].get('name', 'Unknown')
@@ -201,13 +205,13 @@ def analyse_steer(model, steer, hp, path, method='activation_steering'):
     individual_products = []
 
     for scale in tqdm(scales):
-        texts = steer_model(model, steer, hp, prompts[0], scale=scale, n_samples=256)
+        texts = steer_model(model, steer, hp, prompt, scale=scale, n_samples=256)
         all_texts.append((scale, texts))
 
         score, coherence = multi_criterion_evaluation(
             texts,
             [criteria[0]['score'], criteria[0]['coherence']],
-            prompt=prompts[0],
+            prompt=prompt,
             print_errors=True,
         )
 
@@ -267,6 +271,8 @@ def analyse_steer(model, steer, hp, path, method='activation_steering'):
 # %%
 if __name__ == "__main__":
     big_model = False
+    default_prompt = "I think"
+    # default_prompt = "Surprisingly," 
 
     torch.set_grad_enabled(False)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -359,13 +365,15 @@ if __name__ == "__main__":
         results.append(result)
         graph_data_list.append(graph_data)
 
-    # Write the results to a JSON file
     with open(f'steering_results_{model_name}.json', 'w') as f:
         json.dump(results, f, indent=2)
-
-    # Write the graph data to a JSON file
     with open(f'graph_data_all_methods_{model_name}.json', 'w') as f:
         json.dump(graph_data_list, f, indent=2)
+
+    # with open(f'steering_results_{model_name}_surprisingly.json', 'w') as f:
+    #     json.dump(results, f, indent=2)
+    # with open(f'graph_data_all_methods_{model_name}_surprisingly.json', 'w') as f:
+    #     json.dump(graph_data_list, f, indent=2)
 
 # # %%
 # if __name__ == "__main__":

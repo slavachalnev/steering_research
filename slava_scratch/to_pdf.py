@@ -22,4 +22,9 @@ if __name__ == "__main__":
     convert_json_to_pdf(f"{base_path}/all_plots_9b.json", f"{base_path}/all_plots_9b.pdf")
     convert_json_to_pdf(f"{base_path}/London_wedding_optimised_metrics_9b.json", f"{base_path}/London_wedding_optimised_metrics_9b.pdf")
 
+    ##### convert like above but for _surprisingly
+    convert_json_to_pdf(f"{base_path}/all_plots_2b_surprisingly.json", f"{base_path}/all_plots_2b_surprisingly.pdf")
+
+    
+
 # %%
