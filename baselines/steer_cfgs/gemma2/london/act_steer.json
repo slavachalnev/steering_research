@@ -11,7 +11,8 @@
 		"I love London",
 		"I think London is the best city in the world",
 		"The London Eye offers great views",
-		"Hyde Park is a green oasis in London"
+		"Hyde Park is a green oasis in London",
+		"Last summer I visited London"
 	],
 	"neg": [
 		"Rome's ancient ruins",
@@ -25,7 +26,8 @@
 		"I think San Francisco is the best city in the world",
 		"The Eiffel Tower offers great views",
 		"Central Park is a green oasis in New York",
-		"The sun is shining brightly today"
+		"The sun is shining brightly today",
+		"Last summer I went to the beach"
 	],
 	"layer": 12,
 	"hp": "blocks.12.hook_resid_post"
