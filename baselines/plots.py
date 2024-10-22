@@ -13,6 +13,9 @@ def main(data_path, is_2b=True, name=""):
     # Get the unique steering goals and sort them case-insensitively
     steering_goals = sorted(set(data['steering_goal_name'] for data in graph_data_list), key=str.lower)
 
+    # Capitalize the steering goals for display
+    capitalized_goals = [goal.capitalize() for goal in steering_goals]
+
     # Prepare a mapping from steering goal to its data
     data_by_goal = {goal: [] for goal in steering_goals}
     for data in graph_data_list:
@@ -23,7 +26,7 @@ def main(data_path, is_2b=True, name=""):
     num_goals = len(steering_goals)
     cols = 3
     rows = (num_goals + cols - 1) // cols  # Ceiling division to get the number of rows
-    fig = make_subplots(rows=rows, cols=cols, subplot_titles=steering_goals)
+    fig = make_subplots(rows=rows, cols=cols, subplot_titles=capitalized_goals)
 
     # Get Plotly's default qualitative color palette
     default_colors = px.colors.qualitative.Plotly
@@ -119,6 +122,9 @@ def plot_specific_goals(data_path, is_2b=True, name=""):
     # Get the unique steering goals (after filtering) and sort them case-insensitively
     steering_goals = sorted(set(data['steering_goal_name'] for data in graph_data_list), key=str.lower)
 
+    # Capitalize the steering goals for display
+    capitalized_goals = [goal.capitalize() for goal in steering_goals]
+
     # Prepare a mapping from steering goal to its data
     data_by_goal = {goal: [] for goal in steering_goals}
     for data in graph_data_list:
@@ -128,7 +134,7 @@ def plot_specific_goals(data_path, is_2b=True, name=""):
     # Create subplots: 2 columns (side by side), 1 row
     cols = 2
     rows = 1
-    fig = make_subplots(rows=rows, cols=cols, subplot_titles=steering_goals)
+    fig = make_subplots(rows=rows, cols=cols, subplot_titles=capitalized_goals)
 
     # Line styles for different metrics
     metric_styles = {
@@ -147,9 +153,9 @@ def plot_specific_goals(data_path, is_2b=True, name=""):
     }
 
     legend_names = {
-        'product': 'product',
+        'product': 'behavioral*coherence',
         'avg_coherence': 'coherence',
-        'avg_score': 'score'
+        'avg_score': 'behavioral'
     }
 
     # Add data to each subplot
@@ -178,7 +184,6 @@ def plot_specific_goals(data_path, is_2b=True, name=""):
                     x=scales,
                     y=metric_values,
                     mode='lines',
-                    # name=metric_name if idx == 0 else None,  # Show legend labels only once
                     name=legend_names[metric_name] if idx == 0 else None,
                     line=dict(
                         color=color,
@@ -227,7 +232,7 @@ if __name__ == "__main__":
     main(data_path=f"graph_data_all_methods_gemma-2-2b{name}.json", is_2b=True, name=name)
     plot_specific_goals(data_path=f"graph_data_all_methods_gemma-2-2b{name}.json", is_2b=True, name=name)
 
-    main(data_path="graph_data_all_methods_gemma-2-9b.json", is_2b=False, name=name)
-    plot_specific_goals(data_path="graph_data_all_methods_gemma-2-9b.json", is_2b=False, name=name)
+    # main(data_path="graph_data_all_methods_gemma-2-9b.json", is_2b=False, name=name)
+    # plot_specific_goals(data_path="graph_data_all_methods_gemma-2-9b.json", is_2b=False, name=name)
 
 # %%

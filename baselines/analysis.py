@@ -270,7 +270,7 @@ def analyse_steer(model, steer, hp, path, method='activation_steering'):
 
 # %%
 if __name__ == "__main__":
-    big_model = False
+    big_model = True
     default_prompt = "I think"
     # default_prompt = "Surprisingly," 
 
@@ -285,38 +285,42 @@ if __name__ == "__main__":
 # %%
 if __name__ == "__main__":
 
-    paths = [
-        "steer_cfgs/gemma2/anger",
-        "steer_cfgs/gemma2/christian_evangelist",
-        "steer_cfgs/gemma2/conspiracy",
-        "steer_cfgs/gemma2/french",
-        "steer_cfgs/gemma2/london",
-        "steer_cfgs/gemma2/love",
-        "steer_cfgs/gemma2/praise",
-        "steer_cfgs/gemma2/want_to_die",
-        "steer_cfgs/gemma2/wedding",
+    if big_model:
+        paths = [
+            "steer_cfgs/gemma2-9b/anger",
+            "steer_cfgs/gemma2-9b/christian_evangelist",
+            "steer_cfgs/gemma2-9b/conspiracy",
+            "steer_cfgs/gemma2-9b/french",
+            "steer_cfgs/gemma2-9b/london",
+            "steer_cfgs/gemma2-9b/love",
+            "steer_cfgs/gemma2-9b/praise",
+            "steer_cfgs/gemma2-9b/want_to_die",
+            "steer_cfgs/gemma2-9b/wedding",
+            
+        ]
+    else:
+        paths = [
+            "steer_cfgs/gemma2/anger",
+            "steer_cfgs/gemma2/christian_evangelist",
+            "steer_cfgs/gemma2/conspiracy",
+            "steer_cfgs/gemma2/french",
+            "steer_cfgs/gemma2/london",
+            "steer_cfgs/gemma2/love",
+            "steer_cfgs/gemma2/praise",
+            "steer_cfgs/gemma2/want_to_die",
+            "steer_cfgs/gemma2/wedding",
 
-        # "steer_cfgs/gemma2/london_65k",
-        # "steer_cfgs/gemma2/GGB_65k",
+            # "steer_cfgs/gemma2/london_65k",
+            # "steer_cfgs/gemma2/GGB_65k",
 
-        # "steer_cfgs/gemma2/citations",
+            # "steer_cfgs/gemma2/citations",
 
-        # "steer_cfgs/gemma2-9b/anger",
-        # "steer_cfgs/gemma2-9b/christian_evangelist",
-        # "steer_cfgs/gemma2-9b/conspiracy",
-        # "steer_cfgs/gemma2-9b/french",
-        # "steer_cfgs/gemma2-9b/london",
-        # "steer_cfgs/gemma2-9b/love",
-        # "steer_cfgs/gemma2-9b/praise",
-        # "steer_cfgs/gemma2-9b/want_to_die",
-        # "steer_cfgs/gemma2-9b/wedding",
+            # "steer_cfgs/extra_g2/immunology",
+            # "steer_cfgs/extra_g2/bonus_preview_extra",
+            # "steer_cfgs/extra_g2/months",
+            # "steer_cfgs/extra_g2/say",
 
-        # "steer_cfgs/extra_g2/immunology",
-        # "steer_cfgs/extra_g2/bonus_preview_extra",
-        # "steer_cfgs/extra_g2/months",
-        # "steer_cfgs/extra_g2/say",
-
-    ]
+        ]
 
     results = []
     graph_data_list = []
@@ -357,13 +361,13 @@ if __name__ == "__main__":
         results.append(result)
         graph_data_list.append(graph_data)
 
-        # Rotation Steering
-        print("Rotation Steering")
-        steer, hp, layer = load_rotation_steer(path)
-        steer = steer.to(device)
-        result, graph_data = analyse_steer(model, steer, hp, path, method='RotationSteer')
-        results.append(result)
-        graph_data_list.append(graph_data)
+        # # Rotation Steering
+        # print("Rotation Steering")
+        # steer, hp, layer = load_rotation_steer(path)
+        # steer = steer.to(device)
+        # result, graph_data = analyse_steer(model, steer, hp, path, method='RotationSteer')
+        # results.append(result)
+        # graph_data_list.append(graph_data)
 
     with open(f'steering_results_{model_name}.json', 'w') as f:
         json.dump(results, f, indent=2)
