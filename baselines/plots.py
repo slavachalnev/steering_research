@@ -235,23 +235,22 @@ def plot_pareto_curves(data_path, is_2b=True, name=""):
     # Prepare a mapping from steering goal to its data
     data_by_goal = {goal: [] for goal in steering_goals}
     for data in graph_data_list:
-        goal = data['steering_goal_name']
-        data_by_goal[goal].append(data)
+        data_by_goal[data['steering_goal_name']].append(data)
 
-    # Create subplots: 3 columns, as many rows as needed
+    # Create subplots
     num_goals = len(steering_goals)
     cols = 3
-    rows = (num_goals + cols - 1) // cols  # Ceiling division to get the number of rows
+    rows = (num_goals + cols - 1) // cols
     fig = make_subplots(rows=rows, cols=cols, subplot_titles=capitalized_goals)
 
     # Get Plotly's default qualitative color palette
     default_colors = px.colors.qualitative.Plotly
 
-    # Prepare colors for different methods using Plotly's default colors
+    # Prepare colors for different methods
     method_colors = {
-        'CAA': default_colors[0],       # Typically blue
-        'SAE': default_colors[1],       # Typically red/orange
-        'SAE-TS': default_colors[2],    # Typically green
+        'CAA': default_colors[0],
+        'SAE': default_colors[1],
+        'SAE-TS': default_colors[2],
     }
 
     # Add data to each subplot
@@ -264,34 +263,39 @@ def plot_pareto_curves(data_path, is_2b=True, name=""):
         method_data_dict = {}
         for method_data in goal_data_list:
             method = method_data['method']
-            if method == 'RotationSteer':
-                continue  # Skip RotationSteer
-            if method == 'PinverseSteer':
-                continue  # Skip PinverseSteer
+            if method in ['RotationSteer', 'PinverseSteer']:
+                continue
 
             # Map the method names
-            if method == 'ActSteer':
-                method_name = 'CAA'
-            elif method == 'OptimisedSteer':
-                method_name = 'SAE-TS'
-            elif method == 'DirectSteer':
-                method_name = 'SAE'
-            else:
-                method_name = method  # Keep the method name as is if it's already mapped
+            method_name = {
+                'ActSteer': 'CAA',
+                'OptimisedSteer': 'SAE-TS',
+                'DirectSteer': 'SAE'
+            }.get(method, method)
 
+            # Sort by scale to ensure correct arrow direction
             scales = method_data['scales']
             avg_coherence = method_data['avg_coherence']
             avg_score = method_data['avg_score']
-
-            method_data_dict[method_name] = (avg_coherence, avg_score)
+            
+            # Create sorted pairs of points based on scale
+            points = list(zip(scales, avg_coherence, avg_score))
+            points.sort(key=lambda x: x[0])  # Sort by scale
+            
+            method_data_dict[method_name] = points
 
         # Now plot for each method
-        for method_name, (avg_coherence, avg_score) in method_data_dict.items():
+        for method_name, points in method_data_dict.items():
+            # Extract coherence and score values
+            coherence_vals = [p[1] for p in points]
+            score_vals = [p[2] for p in points]
+
+            # Plot just the lines (no markers)
             fig.add_trace(
                 go.Scatter(
-                    x=avg_coherence,
-                    y=avg_score,
-                    mode='lines+markers',
+                    x=coherence_vals,
+                    y=score_vals,
+                    mode='lines',
                     name=method_name,
                     line=dict(color=method_colors.get(method_name, default_colors[0])),
                     showlegend=(row == 1 and col == 1 and method_name not in [trace.name for trace in fig.data])
@@ -300,17 +304,42 @@ def plot_pareto_curves(data_path, is_2b=True, name=""):
                 col=col
             )
 
-    # Update the layout of the figure
+            # Add arrows between consecutive points
+            for i in range(len(points) - 1):
+                x0, y0 = coherence_vals[i], score_vals[i]
+                x1, y1 = coherence_vals[i + 1], score_vals[i + 1]
+                
+                # Calculate arrow position (80% along the line)
+                ax = x0 + 0.8 * (x1 - x0)
+                ay = y0 + 0.8 * (y1 - y0)
+                
+                # Add arrow annotation with increased size
+                fig.add_annotation(
+                    x=ax,
+                    y=ay,
+                    ax=x0,
+                    ay=y0,
+                    xref=f'x{idx + 1}',
+                    yref=f'y{idx + 1}',
+                    axref=f'x{idx + 1}',
+                    ayref=f'y{idx + 1}',
+                    showarrow=True,
+                    arrowhead=2,
+                    arrowsize=1,      # Increased from 1 to 2
+                    arrowwidth=2,     # Increased from 1 to 2
+                    arrowcolor=method_colors.get(method_name, default_colors[0])
+                )
+
+    # Update the layout
     fig.update_layout(
-        height=300 * rows,  # Adjust the height as needed
-        width=1200,         # Adjust the width as needed
-        # title_text='Coherence Score vs Behavioral Score',
+        height=300 * rows,
+        width=1200,
         legend_title='Method',
         showlegend=True,
         legend_font_size=14
     )
 
-    # Update axis labels and fonts for all subplots
+    # Update axis labels and fonts
     for r in range(1, rows + 1):
         for c in range(1, cols + 1):
             fig.update_xaxes(title_text='Coherence Score', row=r, col=c, range=[0, 1])
@@ -318,19 +347,12 @@ def plot_pareto_curves(data_path, is_2b=True, name=""):
 
     fig.update_annotations(font_size=18)
 
-    # Save the figure as a JSON file
-    if is_2b:
-        output_filename = f"pareto_curves_2b{name}.json"
-    else:
-        output_filename = f"pareto_curves_9b{name}.json"
+    # Save the figure
+    output_filename = f"pareto_curves_{('2b' if is_2b else '9b')}{name}.json"
     pio.write_json(fig, output_filename)
     print(f"Figure saved as {output_filename}")
 
-    # Optionally, still show the figure in the notebook
     fig.show()
-
-
-
 # %%
 if __name__ == "__main__":
     name=""
