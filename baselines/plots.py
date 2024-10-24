@@ -104,7 +104,6 @@ def main(data_path, is_2b=True, name=""):
     fig.show()
 
 
-# %%
 def plot_specific_goals(data_path, is_2b=True, name=""):
     # Define the specific goals to plot
     goals_to_plot = ["London", "wedding"]
@@ -223,16 +222,127 @@ def plot_specific_goals(data_path, is_2b=True, name=""):
     # Optionally, show the figure in the notebook
     fig.show()
 
+def plot_pareto_curves(data_path, is_2b=True, name=""):
+    with open(data_path, 'r') as f:
+        graph_data_list = json.load(f)
+
+    # Get the unique steering goals and sort them case-insensitively
+    steering_goals = sorted(set(data['steering_goal_name'] for data in graph_data_list), key=str.lower)
+
+    # Capitalize the steering goals for display
+    capitalized_goals = [goal.capitalize() for goal in steering_goals]
+
+    # Prepare a mapping from steering goal to its data
+    data_by_goal = {goal: [] for goal in steering_goals}
+    for data in graph_data_list:
+        goal = data['steering_goal_name']
+        data_by_goal[goal].append(data)
+
+    # Create subplots: 3 columns, as many rows as needed
+    num_goals = len(steering_goals)
+    cols = 3
+    rows = (num_goals + cols - 1) // cols  # Ceiling division to get the number of rows
+    fig = make_subplots(rows=rows, cols=cols, subplot_titles=capitalized_goals)
+
+    # Get Plotly's default qualitative color palette
+    default_colors = px.colors.qualitative.Plotly
+
+    # Prepare colors for different methods using Plotly's default colors
+    method_colors = {
+        'CAA': default_colors[0],       # Typically blue
+        'SAE': default_colors[1],       # Typically red/orange
+        'SAE-TS': default_colors[2],    # Typically green
+    }
+
+    # Add data to each subplot
+    for idx, goal in enumerate(steering_goals):
+        row = idx // cols + 1
+        col = idx % cols + 1
+        goal_data_list = data_by_goal[goal]
+
+        # Prepare data for each method
+        method_data_dict = {}
+        for method_data in goal_data_list:
+            method = method_data['method']
+            if method == 'RotationSteer':
+                continue  # Skip RotationSteer
+            if method == 'PinverseSteer':
+                continue  # Skip PinverseSteer
+
+            # Map the method names
+            if method == 'ActSteer':
+                method_name = 'CAA'
+            elif method == 'OptimisedSteer':
+                method_name = 'SAE-TS'
+            elif method == 'DirectSteer':
+                method_name = 'SAE'
+            else:
+                method_name = method  # Keep the method name as is if it's already mapped
+
+            scales = method_data['scales']
+            avg_coherence = method_data['avg_coherence']
+            avg_score = method_data['avg_score']
+
+            method_data_dict[method_name] = (avg_coherence, avg_score)
+
+        # Now plot for each method
+        for method_name, (avg_coherence, avg_score) in method_data_dict.items():
+            fig.add_trace(
+                go.Scatter(
+                    x=avg_coherence,
+                    y=avg_score,
+                    mode='lines+markers',
+                    name=method_name,
+                    line=dict(color=method_colors.get(method_name, default_colors[0])),
+                    showlegend=(row == 1 and col == 1 and method_name not in [trace.name for trace in fig.data])
+                ),
+                row=row,
+                col=col
+            )
+
+    # Update the layout of the figure
+    fig.update_layout(
+        height=300 * rows,  # Adjust the height as needed
+        width=1200,         # Adjust the width as needed
+        # title_text='Coherence Score vs Behavioral Score',
+        legend_title='Method',
+        showlegend=True,
+        legend_font_size=14
+    )
+
+    # Update axis labels and fonts for all subplots
+    for r in range(1, rows + 1):
+        for c in range(1, cols + 1):
+            fig.update_xaxes(title_text='Coherence Score', row=r, col=c, range=[0, 1])
+            fig.update_yaxes(title_text='Behavioral Score', row=r, col=c, range=[0, 1])
+
+    fig.update_annotations(font_size=18)
+
+    # Save the figure as a JSON file
+    if is_2b:
+        output_filename = f"pareto_curves_2b{name}.json"
+    else:
+        output_filename = f"pareto_curves_9b{name}.json"
+    pio.write_json(fig, output_filename)
+    print(f"Figure saved as {output_filename}")
+
+    # Optionally, still show the figure in the notebook
+    fig.show()
+
+
 
 # %%
 if __name__ == "__main__":
     name=""
     # name="_surprisingly"
 
-    main(data_path=f"graph_data_all_methods_gemma-2-2b{name}.json", is_2b=True, name=name)
-    plot_specific_goals(data_path=f"graph_data_all_methods_gemma-2-2b{name}.json", is_2b=True, name=name)
+    # main(data_path=f"graph_data_all_methods_gemma-2-2b{name}.json", is_2b=True, name=name)
+    # plot_specific_goals(data_path=f"graph_data_all_methods_gemma-2-2b{name}.json", is_2b=True, name=name)
+    plot_pareto_curves(data_path=f"graph_data_all_methods_gemma-2-2b{name}.json", is_2b=True, name=name)
 
     # main(data_path="graph_data_all_methods_gemma-2-9b.json", is_2b=False, name=name)
     # plot_specific_goals(data_path="graph_data_all_methods_gemma-2-9b.json", is_2b=False, name=name)
+    # plot_pareto_curves(data_path="graph_data_all_methods_gemma-2-9b.json", is_2b=False, name=name)
+
 
 # %%
