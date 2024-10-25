@@ -259,6 +259,32 @@ def plot_pareto_curves(data_path, is_2b=True, name=""):
         col = idx % cols + 1
         goal_data_list = data_by_goal[goal]
 
+        # Add "Good" label in top-right corner with grey color
+        fig.add_annotation(
+            x=0.9,
+            y=0.9,
+            text="Good",
+            showarrow=False,
+            xref=f'x{idx + 1}',
+            yref=f'y{idx + 1}',
+            font=dict(size=20, color='grey'),  # Added grey color
+            xanchor='right',
+            yanchor='top'
+        )
+
+        # Add "Bad" label in bottom-left corner with grey color
+        fig.add_annotation(
+            x=0.1,
+            y=0.1,
+            text="Bad",
+            showarrow=False,
+            xref=f'x{idx + 1}',
+            yref=f'y{idx + 1}',
+            font=dict(size=20, color='grey'),  # Added grey color
+            xanchor='left',
+            yanchor='bottom'
+        )
+
         # Prepare data for each method
         method_data_dict = {}
         for method_data in goal_data_list:
@@ -325,8 +351,8 @@ def plot_pareto_curves(data_path, is_2b=True, name=""):
                     ayref=f'y{idx + 1}',
                     showarrow=True,
                     arrowhead=2,
-                    arrowsize=1,      # Increased from 1 to 2
-                    arrowwidth=2,     # Increased from 1 to 2
+                    arrowsize=1,
+                    arrowwidth=2,
                     arrowcolor=method_colors.get(method_name, default_colors[0])
                 )
 
